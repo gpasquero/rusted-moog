@@ -9,8 +9,8 @@
          `data-wasm-opt="z"` runs `wasm-opt -Oz` to shrink the module. -->
     
 <script type="module">
-import init, * as bindings from '/rusted-moog/app/voog-6af90a411da8efce.js';
-const wasm = await init({ module_or_path: '/rusted-moog/app/voog-6af90a411da8efce_bg.wasm' });
+import init, * as bindings from '/rusted-moog/app/voog-126963cd2e4a5b04.js';
+const wasm = await init({ module_or_path: '/rusted-moog/app/voog-126963cd2e4a5b04_bg.wasm' });
 
 
 window.wasmBindings = bindings;
@@ -40,7 +40,7 @@ dispatchEvent(new CustomEvent("TrunkApplicationStarted", {detail: {wasm}}));
         outline: none;
       }
     </style>
-  <link rel="modulepreload" href="/rusted-moog/app/voog-6af90a411da8efce.js" crossorigin="anonymous" integrity="sha384-wJ7o7tUTHsp/YIEnZ7mOfDj6YbCoQFayOVyNcNhi5SXMm9AFqW+11W0RxhQQ234R"><link rel="preload" href="/rusted-moog/app/voog-6af90a411da8efce_bg.wasm" crossorigin="anonymous" integrity="sha384-7iwwQEW9LqEx5k+99/oDf6RL45cKu4/E+F5j1h9UeC/3Kc6cpxaJGR9KylYlt3sO" as="fetch" type="application/wasm"></head>
+  <link rel="modulepreload" href="/rusted-moog/app/voog-126963cd2e4a5b04.js" crossorigin="anonymous" integrity="sha384-wJ7o7tUTHsp/YIEnZ7mOfDj6YbCoQFayOVyNcNhi5SXMm9AFqW+11W0RxhQQ234R"><link rel="preload" href="/rusted-moog/app/voog-126963cd2e4a5b04_bg.wasm" crossorigin="anonymous" integrity="sha384-N+hcFL5Yy5dYL6TtwZQORPb8odHX0qldmJv+NA9JBD+0EC/cCSIZGTLPJXcAJjdS" as="fetch" type="application/wasm"></head>
   <body>
     <canvas id="the_canvas_id"></canvas>
   </body>

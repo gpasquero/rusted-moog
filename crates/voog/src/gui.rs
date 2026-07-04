@@ -775,9 +775,13 @@ impl App {
         let wood_tex = load_wood(&cc.egui_ctx);
         let shot_path = std::env::var("VOOG_SHOT").ok();
         if shot_path.is_some() {
-            // Screenshot mode: shrink the UI slightly so the entire panel fits the
-            // capture window even on a short display (the normal app is unaffected).
-            cc.egui_ctx.set_zoom_factor(0.8);
+            // Screenshot mode: shrink a touch more so the whole panel fits the
+            // capture window even on a short display.
+            cc.egui_ctx.set_zoom_factor(0.78);
+        } else {
+            // Compress the whole UI so the full panel (incl. the arpeggiator and
+            // output rows) fits on typical laptop screens without scrolling.
+            cc.egui_ctx.set_zoom_factor(0.85);
         }
         let patch = Patch::default();
         let mut app = Self {
@@ -1712,7 +1716,15 @@ impl eframe::App for App {
 
         egui::CentralPanel::default()
             .frame(egui::Frame::none().fill(PANEL_BOT).inner_margin(8.0))
-            .show(ctx, |ui| self.body(ui));
+            .show(ctx, |ui| {
+                // Scroll the panel sections if the window is shorter than the
+                // full layout, so every control (incl. the arpeggiator paddles)
+                // stays reachable on small displays. The keyboard panel below
+                // stays fixed.
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| self.body(ui));
+            });
 
         self.handle_screenshot(ctx);
 
@@ -1733,8 +1745,8 @@ pub fn run(tx: EventSender, shared: Arc<SharedState>, presets: Vec<Patch>) -> ef
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Rusted Moog")
-            .with_inner_size([1080.0, 1010.0])
-            .with_min_inner_size([860.0, 760.0]),
+            .with_inner_size([1080.0, 860.0])
+            .with_min_inner_size([820.0, 560.0]),
         ..Default::default()
     };
     eframe::run_native(
