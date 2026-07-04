@@ -754,6 +754,12 @@ impl App {
     ) -> Self {
         Self::install_theme(&cc.egui_ctx);
         let wood_tex = load_wood(&cc.egui_ctx);
+        let shot_path = std::env::var("VOOG_SHOT").ok();
+        if shot_path.is_some() {
+            // Screenshot mode: shrink the UI slightly so the entire panel fits the
+            // capture window even on a short display (the normal app is unaffected).
+            cc.egui_ctx.set_zoom_factor(0.8);
+        }
         let patch = Patch::default();
         let mut app = Self {
             tx,
@@ -774,7 +780,7 @@ impl App {
             vu_db: -60.0,
             peak_db: -60.0,
             wood_tex,
-            shot_path: std::env::var("VOOG_SHOT").ok(),
+            shot_path,
             shot_frame: 0,
         };
         app.sync_shadows();
@@ -1585,8 +1591,8 @@ pub fn run(tx: EventSender, shared: Arc<SharedState>, presets: Vec<Patch>) -> ef
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Rusted Moog")
-            .with_inner_size([1080.0, 940.0])
-            .with_min_inner_size([860.0, 720.0]),
+            .with_inner_size([1080.0, 1010.0])
+            .with_min_inner_size([860.0, 760.0]),
         ..Default::default()
     };
     eframe::run_native(
