@@ -1,0 +1,439 @@
+<title>Rusted Moog — Panel</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    /* wood */
+    --oak:#8a5a34; --oak-hi:#a97244; --oak-lo:#563820; --oak-edge:#3f2915;
+    /* panel */
+    --panel-hi:#4c5052; --panel-lo:#34383a; --panel-edge:#202325;
+    --engrave-d:#25282a; --engrave-l:#5f6467;
+    /* metal + ink */
+    --alu-hi:#f0f0f2; --alu:#c8c9cb; --alu-lo:#96979a; --alu-rim:#17181a;
+    --ink:#eceae2; --ink-dim:#9fa0a0;
+    --amber:#e8a025; --amber-dim:#7a5a1f;
+    --red-hi:#e0463200; --red-a:#dd3c2b; --red-b:#9c1c12;
+    --key-w:#ece7d8; --key-b:#1a1a1a;
+    --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --sans:"Helvetica Neue",Arial,"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(120% 90% at 50% -10%,#222 0%,#141312 55%,#0c0b0a 100%);
+    color:var(--ink);font-family:var(--sans);
+    min-height:100vh;display:flex;flex-direction:column;align-items:center;
+    padding:32px 16px 56px;gap:22px;-webkit-font-smoothing:antialiased;
+  }
+  .masthead{text-align:center;max-width:900px}
+  .eyebrow{
+    font-size:11px;letter-spacing:.42em;text-transform:uppercase;color:var(--amber);
+    margin:0 0 8px;font-weight:600;text-indent:.42em;
+  }
+  .wordmark{
+    font-size:clamp(34px,7vw,64px);line-height:.92;margin:0;font-weight:800;
+    letter-spacing:.02em;text-transform:uppercase;color:#f4f2ec;
+    text-shadow:0 1px 0 #000,0 2px 14px rgba(232,160,37,.16);text-wrap:balance;
+  }
+  .sub{margin:12px 0 0;color:var(--ink-dim);font-size:14px;letter-spacing:.02em}
+  .sub b{color:var(--ink);font-weight:600}
+
+  /* ---- the instrument ---- */
+  .instrument{
+    width:min(1160px,100%);
+    background:
+      linear-gradient(180deg,var(--oak-hi),var(--oak) 14%,var(--oak-lo) 100%);
+    border-radius:16px;padding:18px;
+    box-shadow:0 40px 90px -30px rgba(0,0,0,.85),0 2px 0 rgba(255,255,255,.12) inset,
+               0 -18px 40px -20px rgba(0,0,0,.6) inset;
+    border:1px solid var(--oak-edge);
+    position:relative;
+  }
+  /* wood grain */
+  .instrument::before{
+    content:"";position:absolute;inset:0;border-radius:16px;pointer-events:none;
+    background:repeating-linear-gradient(92deg,
+      rgba(0,0,0,.10) 0 2px,rgba(255,255,255,.04) 2px 3px,rgba(0,0,0,0) 3px 9px);
+    mix-blend-mode:overlay;opacity:.7;
+  }
+  .panel{
+    position:relative;border-radius:8px;padding:14px 8px 18px;
+    background:linear-gradient(180deg,var(--panel-hi),var(--panel-lo));
+    box-shadow:0 2px 0 rgba(255,255,255,.08) inset,0 -3px 12px rgba(0,0,0,.5) inset,
+               0 0 0 2px var(--panel-edge);
+    overflow:hidden;
+  }
+  /* brushed metal micro-texture */
+  .panel::before{
+    content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background:repeating-linear-gradient(90deg,rgba(255,255,255,.025) 0 1px,rgba(0,0,0,.03) 1px 2px);
+  }
+  .rack{display:flex;align-items:stretch;gap:0;position:relative}
+  .section{padding:0 14px;display:flex;flex-direction:column;gap:10px;flex:1 1 auto}
+  /* engraved divider */
+  .section + .section{border-left:1px solid var(--engrave-d);box-shadow:-1px 0 0 var(--engrave-l)}
+  .sec-h{
+    text-align:center;font-size:10.5px;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--ink);font-weight:700;padding-bottom:5px;margin-bottom:2px;
+    border-bottom:1px solid rgba(255,255,255,.14);
+  }
+  .row{display:flex;justify-content:center;gap:14px;flex-wrap:wrap}
+  .stack{display:flex;flex-direction:column;gap:12px}
+
+  /* ---- knob ---- */
+  .knob-wrap{display:flex;flex-direction:column;align-items:center;gap:5px;width:64px}
+  .knob-lbl{font-size:8.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-dim);text-align:center;min-height:11px}
+  .knob{
+    --a:-135deg;width:46px;height:46px;border-radius:50%;position:relative;cursor:ns-resize;
+    /* black skirt with tick marks */
+    background:
+      repeating-conic-gradient(from -138deg,var(--ink) 0 1.2deg,rgba(0,0,0,0) 1.2deg 26deg),
+      radial-gradient(circle at 50% 50%,#0c0c0d 62%,#000 63%);
+    background-blend-mode:normal;
+    box-shadow:0 3px 6px rgba(0,0,0,.55);
+    touch-action:none;
+  }
+  /* aluminum cap */
+  .knob::before{
+    content:"";position:absolute;inset:7px;border-radius:50%;
+    background:
+      radial-gradient(circle at 38% 30%,var(--alu-hi) 0%,var(--alu) 42%,var(--alu-lo) 78%,#7d7e81 100%);
+    box-shadow:0 0 0 1.5px var(--alu-rim),0 1px 2px rgba(0,0,0,.5) inset,0 -2px 4px rgba(0,0,0,.35) inset;
+  }
+  /* white pointer */
+  .knob::after{
+    content:"";position:absolute;left:50%;top:50%;width:3px;height:17px;border-radius:2px;
+    background:linear-gradient(#fff,#d7d7d2);transform-origin:50% 0;
+    transform:translate(-50%,0) rotate(var(--a));
+    box-shadow:0 0 3px rgba(0,0,0,.5);
+  }
+  .knob.lg{width:56px;height:56px}
+  .knob.lg::after{height:22px}
+  .knob-val{font-family:var(--mono);font-size:9px;color:var(--amber);font-variant-numeric:tabular-nums;min-height:12px;letter-spacing:.02em}
+
+  /* ---- rocker switch ---- */
+  .rocker{display:flex;flex-direction:column;align-items:center;gap:5px;width:60px}
+  .rk{
+    width:38px;height:22px;border-radius:4px;cursor:pointer;position:relative;
+    background:linear-gradient(180deg,#3a3d3f,#222426);
+    box-shadow:0 1px 0 rgba(255,255,255,.08) inset,0 2px 4px rgba(0,0,0,.5);
+    border:1px solid #17181a;transition:none;
+  }
+  .rk::after{
+    content:"";position:absolute;inset:2px;border-radius:3px;
+    background:linear-gradient(180deg,#34383a,#26292b);
+    box-shadow:0 -1px 2px rgba(0,0,0,.5) inset,0 6px 6px -4px rgba(0,0,0,.6);
+  }
+  .rk[aria-pressed="true"]::after{
+    background:linear-gradient(180deg,var(--red-a),var(--red-b));
+    box-shadow:0 1px 1px rgba(255,255,255,.35) inset,0 -3px 5px rgba(0,0,0,.4) inset,0 0 8px rgba(221,60,43,.4);
+  }
+  .rk-lbl{font-size:8px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);text-align:center}
+
+  /* ---- waveform selector (metal segmented) ---- */
+  .wave{display:flex;flex-direction:column;align-items:center;gap:5px}
+  .wave-cells{display:flex;border-radius:5px;overflow:hidden;border:1px solid #17181a;box-shadow:0 2px 4px rgba(0,0,0,.5)}
+  .wc{
+    width:26px;height:22px;display:grid;place-items:center;cursor:pointer;
+    background:linear-gradient(180deg,#3a3d3f,#26292b);color:#7f8183;
+    border-right:1px solid #17181a;
+  }
+  .wc:last-child{border-right:0}
+  .wc svg{width:16px;height:12px;stroke:currentColor;fill:none;stroke-width:1.6}
+  .wc[aria-pressed="true"]{background:linear-gradient(180deg,#2a2c2e,#1c1e20);color:var(--amber);box-shadow:0 0 8px rgba(232,160,37,.35) inset}
+  .wave-lbl{font-size:8px;letter-spacing:.1em;color:var(--ink-dim);text-transform:uppercase}
+
+  /* ---- output / VU ---- */
+  .vu{width:16px;height:74px;border-radius:3px;background:#111;border:1px solid #000;
+      box-shadow:0 1px 2px rgba(255,255,255,.06) inset;overflow:hidden;position:relative;align-self:center}
+  .vu-fill{position:absolute;left:0;right:0;bottom:0;height:0%;
+    background:linear-gradient(0deg,#2ecc71,#8ed81e 55%,#f2c014 78%,#e8452b 100%);
+    transition:height .06s linear}
+  .voices{font-family:var(--mono);font-size:10px;color:var(--amber);text-align:center;font-variant-numeric:tabular-nums}
+
+  /* ---- keyboard deck ---- */
+  .deck{display:flex;gap:12px;margin-top:16px;align-items:stretch}
+  .wheels{background:#101010;border-radius:8px;padding:12px 10px;display:flex;gap:14px;
+          box-shadow:0 2px 6px rgba(0,0,0,.5) inset,0 0 0 1px #000;align-items:flex-end}
+  .wheel-col{display:flex;flex-direction:column;align-items:center;gap:6px}
+  .wheel{width:26px;height:96px;border-radius:13px;position:relative;cursor:ns-resize;touch-action:none;
+    background:linear-gradient(90deg,#0c0c0c,#3a3a3a 22%,#565656 50%,#333 74%,#0a0a0a);
+    box-shadow:0 2px 5px rgba(0,0,0,.6),0 0 0 1px #000;overflow:hidden}
+  .wheel::before{content:"";position:absolute;inset:0;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.10) 0 1px,rgba(0,0,0,.35) 1px 5px)}
+  .wheel .dot{position:absolute;left:2px;right:2px;height:5px;border-radius:2px;background:#c9c9c9;top:48%;box-shadow:0 0 4px #000}
+  .wheel-lbl{font-size:8px;letter-spacing:.12em;color:var(--ink-dim)}
+  .keys{flex:1;height:150px;border-radius:0 0 8px 8px;position:relative;display:flex;
+        background:#0c0c0c;padding:6px 6px 0;box-shadow:0 2px 6px rgba(0,0,0,.5) inset;overflow:hidden}
+  .wkey{flex:1;background:linear-gradient(180deg,#fff,var(--key-w));margin:0 1px;border-radius:0 0 4px 4px;
+    box-shadow:0 -1px 0 #b9b3a3 inset,0 3px 3px rgba(0,0,0,.25);position:relative;cursor:pointer}
+  .wkey.on{background:linear-gradient(180deg,#ffe6b0,#e8c987);box-shadow:0 0 12px rgba(232,160,37,.5)}
+  .bkey{position:absolute;top:0;width:calc(100%/14*0.62);height:62%;background:linear-gradient(180deg,#2a2a2a,var(--key-b));
+    border-radius:0 0 3px 3px;box-shadow:0 3px 4px rgba(0,0,0,.6),0 -1px 0 #444 inset;z-index:2;cursor:pointer}
+  .bkey.on{background:linear-gradient(180deg,#8a6a2a,#5e4718)}
+
+  .plate{margin-top:12px;display:flex;justify-content:space-between;align-items:center;
+    font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--oak-lo)}
+  .plate b{color:#2a1c0e}
+  .badge{font-family:var(--mono);background:#141210;color:var(--amber);padding:3px 8px;border-radius:4px;
+    letter-spacing:.06em;box-shadow:0 0 0 1px #000}
+  .hint{color:var(--ink-dim);font-size:12px;text-align:center;max-width:520px;line-height:1.5}
+  .hint kbd{font-family:var(--mono);background:#222;border:1px solid #000;border-bottom-width:2px;border-radius:4px;padding:1px 5px;color:#ddd;font-size:11px}
+  @media (max-width:720px){.knob-wrap{width:54px}.section{padding:0 8px}}
+</style>
+
+<header class="masthead">
+  <p class="eyebrow">Virtual Analog Synthesizer · Rust</p>
+  <h1 class="wordmark">Rusted Moog</h1>
+  <p class="sub">A real-time, glitch-free polysynth — <b>Minimoog</b>-inspired panel, <b>Moog ladder filter</b>, zero garbage collection in the audio path.</p>
+</header>
+
+<main class="instrument" aria-label="Rusted Moog control panel">
+  <div class="panel">
+    <div class="rack" id="rack">
+      <!-- OSCILLATORS -->
+      <section class="section">
+        <div class="sec-h">Oscillators</div>
+        <div class="row" id="osc-row"></div>
+      </section>
+      <!-- MIXER -->
+      <section class="section">
+        <div class="sec-h">Mixer</div>
+        <div class="row" id="mix-row"></div>
+      </section>
+      <!-- FILTER -->
+      <section class="section">
+        <div class="sec-h">Filter</div>
+        <div class="row" id="filt-row"></div>
+      </section>
+      <!-- ENVELOPES -->
+      <section class="section">
+        <div class="sec-h">Envelopes</div>
+        <div class="row" id="env-row"></div>
+      </section>
+      <!-- MODULATION -->
+      <section class="section">
+        <div class="sec-h">Modulation</div>
+        <div class="row" id="mod-row"></div>
+      </section>
+      <!-- OUTPUT -->
+      <section class="section" style="flex:0 0 auto">
+        <div class="sec-h">Output</div>
+        <div class="row" id="out-row"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="deck">
+    <div class="wheels">
+      <div class="wheel-col"><div class="wheel" id="pitch"><div class="dot"></div></div><div class="wheel-lbl">PITCH</div></div>
+      <div class="wheel-col"><div class="wheel" id="mod"><div class="dot"></div></div><div class="wheel-lbl">MOD</div></div>
+    </div>
+    <div class="keys" id="keys"></div>
+  </div>
+
+  <div class="plate">
+    <span><b>rusted&nbsp;moog</b> · model D</span>
+    <span class="badge">RUST · cpal · egui</span>
+  </div>
+</main>
+
+<p class="hint">Turn knobs by dragging up/down. Play with your mouse or the <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd>… keys — it makes real sound. This is a static preview of the desktop app's panel.</p>
+
+<script>
+(function(){
+  "use strict";
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---------- tiny WebAudio voice ---------- */
+  let ac=null, master=null, analyser=null, vuData=null;
+  const state={wave:"sawtooth",cutoff:2200,res:6,vol:.5};
+  function audio(){
+    if(ac) return ac;
+    ac=new (window.AudioContext||window.webkitAudioContext)();
+    master=ac.createGain();master.gain.value=state.vol;
+    analyser=ac.createAnalyser();analyser.fftSize=256;vuData=new Uint8Array(analyser.frequencyBinCount);
+    master.connect(analyser);analyser.connect(ac.destination);
+    return ac;
+  }
+  const active=new Map();
+  function noteOn(midi){
+    audio();if(active.has(midi))return;
+    const f=440*Math.pow(2,(midi-69)/12);
+    const osc=ac.createOscillator();osc.type=state.wave;osc.frequency.value=f;
+    const det=ac.createOscillator();det.type=state.wave;det.frequency.value=f*1.006;
+    const lp=ac.createBiquadFilter();lp.type="lowpass";lp.frequency.value=state.cutoff;lp.Q.value=state.res;
+    const g=ac.createGain();g.gain.value=0;
+    osc.connect(g);det.connect(g);g.connect(lp);lp.connect(master);
+    const t=ac.currentTime;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.26,t+.008);
+    g.gain.linearRampToValueAtTime(.18,t+.12);
+    osc.start();det.start();
+    active.set(midi,{osc,det,g,lp});
+  }
+  function noteOff(midi){
+    const v=active.get(midi);if(!v)return;active.delete(midi);
+    const t=ac.currentTime;v.g.gain.cancelScheduledValues(t);v.g.gain.setValueAtTime(v.g.gain.value,t);
+    v.g.gain.linearRampToValueAtTime(0,t+.14);
+    v.osc.stop(t+.16);v.det.stop(t+.16);
+  }
+
+  /* ---------- knob factory ---------- */
+  function knob(label,{min=0,max=1,val=0,unit="",big=false,fmt=null,onchange=null}={}){
+    const wrap=document.createElement("div");wrap.className="knob-wrap";
+    const lbl=document.createElement("div");lbl.className="knob-lbl";lbl.textContent=label;
+    const k=document.createElement("div");k.className="knob"+(big?" lg":"");k.tabIndex=0;
+    const out=document.createElement("div");out.className="knob-val";
+    wrap.append(lbl,k,out);
+    let v=val;
+    const show=()=>{
+      const r=(v-min)/(max-min);
+      k.style.setProperty("--a",(-135+r*270)+"deg");
+      out.textContent=fmt?fmt(v):(Math.abs(v)>=100?Math.round(v):v.toFixed(2))+unit;
+    };
+    const set=nv=>{v=Math.min(max,Math.max(min,nv));show();onchange&&onchange(v);};
+    let sy=0,sv=0,drag=false;
+    k.addEventListener("pointerdown",e=>{drag=true;sy=e.clientY;sv=v;k.setPointerCapture(e.pointerId);e.preventDefault();});
+    k.addEventListener("pointermove",e=>{if(!drag)return;set(sv+((sy-e.clientY)/160)*(max-min));});
+    k.addEventListener("pointerup",()=>drag=false);
+    k.addEventListener("dblclick",()=>set(val));
+    show();return {wrap,set,get:()=>v};
+  }
+  const WAVES={
+    sine:'<path d="M1 6 C4 -1 6 13 8 6 S12 -1 15 6"/>',
+    sawtooth:'<path d="M1 10 L8 2 L8 10 L15 2"/>',
+    square:'<path d="M1 10 L1 2 L8 2 L8 10 L15 10 L15 2"/>',
+    triangle:'<path d="M1 10 L4.5 2 L11 10 L15 4"/>',
+  };
+  function waveSel(onchange){
+    const w=document.createElement("div");w.className="wave";
+    const cells=document.createElement("div");cells.className="wave-cells";
+    const lbl=document.createElement("div");lbl.className="wave-lbl";lbl.textContent="WAVE";
+    Object.keys(WAVES).forEach((name,i)=>{
+      const c=document.createElement("div");c.className="wc";c.setAttribute("aria-pressed",i===1);
+      c.innerHTML='<svg viewBox="0 0 16 12">'+WAVES[name]+'</svg>';
+      c.addEventListener("click",()=>{[...cells.children].forEach(x=>x.setAttribute("aria-pressed","false"));
+        c.setAttribute("aria-pressed","true");onchange&&onchange(name);});
+      cells.append(c);
+    });
+    w.append(cells,lbl);return w;
+  }
+  function rocker(label,on){
+    const wrap=document.createElement("div");wrap.className="rocker";
+    const r=document.createElement("div");r.className="rk";r.setAttribute("role","button");
+    r.setAttribute("aria-pressed",!!on);
+    const lbl=document.createElement("div");lbl.className="rk-lbl";lbl.textContent=label;
+    r.addEventListener("click",()=>r.setAttribute("aria-pressed",r.getAttribute("aria-pressed")!=="true"));
+    wrap.append(r,lbl);return wrap;
+  }
+
+  /* ---------- build panel ---------- */
+  const oscRow=document.getElementById("osc-row");
+  for(let i=1;i<=3;i++){
+    const st=document.createElement("div");st.className="stack";
+    st.append(knob("Osc "+i+" Oct",{min:-2,max:2,val:i===1?0:-1,fmt:v=>Math.round(v)}).wrap);
+    st.append(waveSel(i===1?w=>state.wave=w:null));
+    oscRow.append(st);
+  }
+  const mixRow=document.getElementById("mix-row");
+  ["Osc 1","Osc 2","Osc 3"].forEach((n,i)=>{
+    const st=document.createElement("div");st.className="stack";
+    st.append(knob(n,{min:0,max:1,val:i===0?1:.5,unit:"",fmt:v=>Math.round(v*100)+"%"}).wrap);
+    st.append(rocker("On",i===0));
+    mixRow.append(st);
+  });
+  mixRow.append((()=>{const st=document.createElement("div");st.className="stack";
+    st.append(knob("Noise",{min:0,max:1,val:0,fmt:v=>Math.round(v*100)+"%"}).wrap);
+    st.append(rocker("Pink",false));return st;})());
+
+  const filt=document.getElementById("filt-row");
+  filt.append(knob("Cutoff",{min:20,max:16000,val:2200,big:true,fmt:v=>v<1000?Math.round(v)+"Hz":(v/1000).toFixed(1)+"k",
+    onchange:v=>state.cutoff=v}).wrap);
+  filt.append(knob("Reso",{min:0,max:1,val:.35,fmt:v=>Math.round(v*100)+"%",onchange:v=>state.res=1+v*18}).wrap);
+  filt.append(knob("Env Amt",{min:0,max:48,val:18,fmt:v=>Math.round(v)}).wrap);
+  filt.append(knob("Key Trk",{min:0,max:1,val:.5,fmt:v=>Math.round(v*100)+"%"}).wrap);
+
+  const env=document.getElementById("env-row");
+  [["Filter","A",.01],["","D",.3],["","S",.2],["","R",.3],["Amp","A",.01],["","D",.1],["","S",.7],["","R",.3]]
+    .forEach(([grp,p,val],idx)=>{
+      const kv=knob((grp?grp+" ":"")+p,{min:0,max:1,val,fmt:v=>v.toFixed(2)});
+      env.append(kv.wrap);
+    });
+
+  const mod=document.getElementById("mod-row");
+  mod.append(knob("LFO Rate",{min:.1,max:20,val:5,fmt:v=>v.toFixed(1)+"Hz"}).wrap);
+  mod.append(waveSel());
+  mod.append(knob("Depth",{min:0,max:1,val:0,fmt:v=>Math.round(v*100)+"%"}).wrap);
+  mod.append(knob("Glide",{min:0,max:2,val:0,fmt:v=>Math.round(v*1000)+"ms"}).wrap);
+
+  const out=document.getElementById("out-row");
+  const master_k=knob("Volume",{min:0,max:1,val:.7,big:true,fmt:v=>Math.round(v*100),
+    onchange:v=>{state.vol=v;if(master)master.gain.value=v;}});
+  out.append(master_k.wrap);
+  const vu=document.createElement("div");vu.className="vu";const vf=document.createElement("div");vf.className="vu-fill";vu.append(vf);
+  const voices=document.createElement("div");voices.className="voices";voices.textContent="0 V";
+  const outStack=document.createElement("div");outStack.className="stack";outStack.style.alignItems="center";
+  outStack.append(vu,voices);out.append(outStack);
+
+  /* ---------- keyboard ---------- */
+  const keys=document.getElementById("keys");
+  const N=14, startMidi=60; // 2 octaves of white keys
+  const whiteSteps=[0,2,4,5,7,9,11], blackAfter=[0,1,3,4,5]; // black key positions within octave
+  const whiteMidi=[];
+  for(let i=0;i<N;i++){
+    const oct=Math.floor(i/7),deg=whiteSteps[i%7];whiteMidi.push(startMidi+oct*12+deg);
+    const wk=document.createElement("div");wk.className="wkey";wk.dataset.midi=whiteMidi[i];keys.append(wk);
+  }
+  // black keys overlaid
+  for(let i=0;i<N-1;i++){
+    if(blackAfter.includes(i%7) && i%7!==2 && i%7!==6){/*handled below*/}
+  }
+  // simpler: place black keys after white indices 0,1,3,4,5 in each octave
+  const blk=[0,1,3,4,5];
+  for(let oct=0;oct<2;oct++){
+    blk.forEach(w=>{
+      const idx=oct*7+w; if(idx>=N-1)return;
+      const bk=document.createElement("div");bk.className="bkey";
+      const midi=whiteMidi[idx]+1;bk.dataset.midi=midi;
+      bk.style.left="calc("+(idx+1)+"*(100% - 12px)/"+N+" - (100% - 12px)/"+N+"*0.31 + 6px)";
+      keys.append(bk);
+    });
+  }
+  function press(el){el.classList.add("on");noteOn(+el.dataset.midi);}
+  function release(el){el.classList.remove("on");noteOff(+el.dataset.midi);}
+  let mouseDown=false;
+  keys.addEventListener("pointerdown",e=>{const t=e.target.closest(".wkey,.bkey");if(t){mouseDown=true;press(t);}});
+  keys.addEventListener("pointerover",e=>{if(!mouseDown)return;const t=e.target.closest(".wkey,.bkey");if(t)press(t);});
+  keys.addEventListener("pointerout",e=>{const t=e.target.closest(".wkey,.bkey");if(t&&t.classList.contains("on"))release(t);});
+  addEventListener("pointerup",()=>{mouseDown=false;keys.querySelectorAll(".on").forEach(release);});
+
+  // computer keyboard
+  const kmap={a:60,w:61,s:62,e:63,d:64,f:65,t:66,g:67,y:68,h:69,u:70,j:71,k:72,o:73,l:74,p:75};
+  const held=new Set();
+  addEventListener("keydown",e=>{const m=kmap[e.key.toLowerCase()];if(m==null||held.has(m))return;held.add(m);
+    noteOn(m);const el=keys.querySelector('[data-midi="'+m+'"]');el&&el.classList.add("on");});
+  addEventListener("keyup",e=>{const m=kmap[e.key.toLowerCase()];if(m==null)return;held.delete(m);
+    noteOff(m);const el=keys.querySelector('[data-midi="'+m+'"]');el&&el.classList.remove("on");});
+
+  /* ---------- wheels ---------- */
+  function wheelCtl(id,spring,onchange){
+    const w=document.getElementById(id),dot=w.querySelector(".dot");let sy=0,sv=.5,v=.5,drag=false;
+    const show=()=>{dot.style.top=(6+(1-v)*(96-12-6))+"px";onchange&&onchange(v);};
+    w.addEventListener("pointerdown",e=>{drag=true;sy=e.clientY;sv=v;w.setPointerCapture(e.pointerId);});
+    w.addEventListener("pointermove",e=>{if(!drag)return;v=Math.min(1,Math.max(0,sv+(sy-e.clientY)/90));show();});
+    w.addEventListener("pointerup",()=>{drag=false;if(spring){v=.5;show();}});
+    show();
+  }
+  wheelCtl("pitch",true);
+  wheelCtl("mod",false,v=>{/* would map to LFO depth */});
+
+  /* ---------- VU animation ---------- */
+  function frame(){
+    if(analyser){analyser.getByteTimeDomainData(vuData);
+      let peak=0;for(let i=0;i<vuData.length;i++){const a=Math.abs(vuData[i]-128)/128;if(a>peak)peak=a;}
+      vf.style.height=Math.min(100,peak*140)+"%";
+      voices.textContent=active.size+" V";
+    }
+    requestAnimationFrame(frame);
+  }
+  if(!reduce) frame();
+})();
+</script>
