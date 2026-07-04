@@ -816,6 +816,27 @@ impl App {
         app
     }
 
+    /// Web only: browsers keep the `AudioContext` suspended until a user gesture,
+    /// and cpal only calls `resume()` once when the stream is built (at page load,
+    /// too early). Re-issue `play()` on every fresh click / key press — that calls
+    /// `AudioContext.resume()` again, which the browser now honours because a
+    /// gesture has occurred, so audio actually starts flowing.
+    #[cfg(target_arch = "wasm32")]
+    fn kick_audio(&mut self, ctx: &Context) {
+        let interacted = ctx.input(|i| {
+            i.pointer.any_pressed()
+                || i.events
+                    .iter()
+                    .any(|e| matches!(e, egui::Event::Key { pressed: true, .. }))
+        });
+        if interacted {
+            if let Some(stream) = &self._stream {
+                use cpal::traits::StreamTrait;
+                let _ = stream.play();
+            }
+        }
+    }
+
     /// When `VOOG_SHOT=<path>` is set: let the UI settle a few frames, request a
     /// framebuffer screenshot, save it as PNG and close. No OS screen-recording
     /// permission needed — it reads the app's own rendered image.
@@ -1564,6 +1585,8 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+        #[cfg(target_arch = "wasm32")]
+        self.kick_audio(ctx);
         self.process_keyboard(ctx);
         self.update_meters();
 
