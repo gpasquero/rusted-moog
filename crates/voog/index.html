@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Rusted Moog</title>
+
+    <!-- Trunk builds this crate's cdylib to wasm and injects the loader.
+         `data-wasm-opt="z"` runs `wasm-opt -Oz` to shrink the module. -->
+    <link data-trunk rel="rust" data-wasm-opt="z" data-cargo-no-default-features />
+
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0e0e0f;
+      }
+      /* Full-window canvas for the egui app. */
+      canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        outline: none;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="the_canvas_id"></canvas>
+  </body>
+</html>

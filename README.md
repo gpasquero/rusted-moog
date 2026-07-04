@@ -12,9 +12,9 @@
 [![Tests](https://img.shields.io/badge/tests-62%20passing-brightgreen)](#testing)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)](#build--run)
 
-### 🎹 [**Play the interactive panel in your browser →**](https://gpasquero.github.io/rusted-moog/)
+### 🎹 [**Play the real synth in your browser (WebAssembly) →**](https://gpasquero.github.io/rusted-moog/)
 
-*(A live preview of the Minimoog-style UI — turn the knobs, play the keys, it makes real sound.)*
+*(The actual Rust + egui app compiled to WASM — same panel, same knobs, same sound. No install.)*
 
 <img src="docs/img/panel.png" alt="Rusted Moog — Minimoog Model D-inspired panel rendered in Rust + egui: anodized panel, brushed-aluminium fluted knobs, red paddle switches, oak wood cheeks" width="900">
 
@@ -40,7 +40,7 @@ Same synth architecture, deterministic real-time audio, and a GUI that actually 
 - 🌊 **LFO** — 4 waveforms, routable to filter / pitch / amp
 - 🎹 **8-voice polyphony × 4 multitimbral channels** with oldest-note voice stealing
 - 🎛️ **Glide/portamento** (off / always / legato) + white & pink noise
-- 🎼 **19 factory presets** — from sub basses to screaming leads
+- 🎼 **37 factory presets** — from sub basses to screaming leads, many ported from classic Minimoog patch charts (Parliament, ELP, Wakeman, Taurus…)
 - 🎨 **Minimoog-inspired GUI** — custom rotary knobs, VU meter, virtual keyboard (mouse + QWERTY)
 - 🎹 **MIDI input** with a full CC map (graceful fallback with no device)
 
@@ -95,7 +95,7 @@ cargo clippy --workspace # zero warnings
 - [ ] Oversampling for the filter at high resonance
 - [ ] Effects: chorus / delay / drive
 - [ ] Stereo spread & unison
-- [ ] Web build via WASM + WebAudio
+- [x] Web build via WASM + WebAudio — [live](https://gpasquero.github.io/rusted-moog/)
 
 ## 🙏 Credits
 

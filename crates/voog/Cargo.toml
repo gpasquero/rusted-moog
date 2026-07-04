@@ -4,19 +4,54 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+# The crate is both a library (shared by the native bin and the WebAssembly
+# build) and a native binary. `cdylib` is required so `trunk`/`wasm-bindgen` can
+# emit the `.wasm` module; `rlib` keeps the native `[[bin]]` able to link it.
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+# The `native` feature (on by default) gates the binary target so that a
+# default `cargo build` produces the desktop app, while `trunk` builds with
+# `--no-default-features` to compile only the `cdylib` (avoiding a duplicate
+# `voog` wasm artifact from the bin).
+[features]
+default = ["native"]
+native = []
+
 [[bin]]
 name = "voog"
 path = "src/main.rs"
+required-features = ["native"]
 
 [dependencies]
 voog-dsp = { path = "../voog-dsp" }
-cpal = "0.15"
-midir = "0.10"
 crossbeam-channel = "0.5"
 eframe = "0.29"
 egui = "0.29"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
-dirs = "5"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+
+# ── Native-only dependencies ────────────────────────────────────────────────
+# MIDI input (`midir`) and `dirs` are desktop-only; both are unavailable / do
+# not build on `wasm32-unknown-unknown`.
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+cpal = "0.15"
+midir = "0.10"
+dirs = "5"
+
+# ── WebAssembly-only dependencies ───────────────────────────────────────────
+# `cpal` needs the `wasm-bindgen` feature to drive the browser AudioContext, and
+# the wasm entry point in `lib.rs` needs the bindgen glue + web-sys DOM types.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+cpal = { version = "0.15", features = ["wasm-bindgen"] }
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+console_error_panic_hook = "0.1"
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Window",
+    "Element",
+    "HtmlCanvasElement",
+] }

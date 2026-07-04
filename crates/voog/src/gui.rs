@@ -705,7 +705,7 @@ fn note_at(p: Pos2, blacks: &[(Rect, i32)], whites: &[(Rect, i32)]) -> Option<i3
 
 // ── Application ────────────────────────────────────────────────────────────
 
-struct App {
+pub struct App {
     tx: EventSender,
     shared: Arc<SharedState>,
     presets: Vec<Patch>,
@@ -734,6 +734,10 @@ struct App {
     // grab the framebuffer to a PNG and quit. Used to generate docs images.
     shot_path: Option<String>,
     shot_frame: u32,
+    // Owns the cpal output stream so it stays alive for the App's lifetime.
+    // Used by the web build (which self-initializes audio); `None` natively,
+    // where `main` owns the stream instead.
+    _stream: Option<cpal::Stream>,
 }
 
 /// Decode the embedded oak-wood photo into a GPU texture (once).
@@ -782,8 +786,33 @@ impl App {
             wood_tex,
             shot_path,
             shot_frame: 0,
+            _stream: None,
         };
         app.sync_shadows();
+        app
+    }
+
+    /// Web constructor: self-initializes the whole engine the way `main` does
+    /// natively — creates the `Synth`, the bounded event channel, the shared
+    /// meter state, loads the factory presets and starts the cpal (Web Audio)
+    /// output stream, storing it inside the `App` so it stays alive.
+    ///
+    /// Audio start is best-effort: browsers block the `AudioContext` until a
+    /// user gesture, so a failure here must not prevent the UI from rendering.
+    #[cfg(target_arch = "wasm32")]
+    pub fn new_web(cc: &eframe::CreationContext<'_>) -> Self {
+        use voog_dsp::{patches::factory_presets, Synth};
+
+        let (tx, rx) = crossbeam_channel::bounded::<Event>(4096);
+        let shared = Arc::new(SharedState::new());
+        let synth = Synth::new();
+
+        // Best-effort: keep the returned stream alive inside the App. If the
+        // browser refuses to start audio (autoplay policy) we still render.
+        let stream = crate::audio::start(synth, rx, shared.clone()).ok();
+
+        let mut app = Self::new(cc, tx, shared, factory_presets());
+        app._stream = stream;
         app
     }
 
@@ -1586,7 +1615,9 @@ impl eframe::App for App {
     }
 }
 
-/// Run the GUI on the main thread (blocks until the window closes).
+/// Run the GUI on the main thread (blocks until the window closes). Native-only;
+/// the web build boots the same `App` via `App::new_web` from `lib.rs`.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn run(tx: EventSender, shared: Arc<SharedState>, presets: Vec<Patch>) -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()

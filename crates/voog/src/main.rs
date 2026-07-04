@@ -1,18 +1,19 @@
-//! Rusted Moog — application entry point. Wires the lock-free event queue
+//! Rusted Moog — native application entry point. Wires the lock-free event queue
 //! between the GUI/MIDI producers and the real-time audio consumer.
+//!
+//! The WebAssembly entry point lives in `lib.rs` under
+//! `#[cfg(target_arch = "wasm32")]`; this binary is native-only.
 
-mod audio;
-mod gui;
-mod midi;
-mod shared;
-
-use std::sync::Arc;
-use voog_dsp::{patches::factory_presets, Event, Synth};
-
+#[cfg(not(target_arch = "wasm32"))]
 fn main() -> anyhow::Result<()> {
+    use std::sync::Arc;
+    use voog::shared::SharedState;
+    use voog::{audio, gui, midi};
+    use voog_dsp::{patches::factory_presets, Event, Synth};
+
     // Multi-producer (GUI + MIDI) -> single-consumer (audio) event queue.
     let (tx, rx) = crossbeam_channel::bounded::<Event>(4096);
-    let shared = Arc::new(shared::SharedState::new());
+    let shared = Arc::new(SharedState::new());
 
     let synth = Synth::new();
 
@@ -27,3 +28,8 @@ fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+// On wasm the binary target is not used (the library's `#[wasm_bindgen(start)]`
+// is the real entry point); provide an empty `main` so the bin still compiles.
+#[cfg(target_arch = "wasm32")]
+fn main() {}
