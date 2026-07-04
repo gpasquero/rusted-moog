@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/voog-dsp"]
+members = ["crates/voog-dsp", "crates/voog"]
 
 [workspace.package]
 version = "0.1.0"
