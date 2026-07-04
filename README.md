@@ -12,6 +12,10 @@
 [![Tests](https://img.shields.io/badge/tests-62%20passing-brightgreen)](#testing)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)](#build--run)
 
+### 🎹 [**Play the interactive panel in your browser →**](https://gpasquero.github.io/rusted-moog/)
+
+*(A live preview of the Minimoog-style UI — turn the knobs, play the keys, it makes real sound.)*
+
 </div>
 
 ---
