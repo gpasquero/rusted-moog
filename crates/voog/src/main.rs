@@ -23,8 +23,7 @@ fn main() -> anyhow::Result<()> {
     let _midi_conn = midi::start(tx.clone(), 0);
 
     // Run the GUI on the main thread; blocks until the window is closed.
-    gui::run(tx, shared, factory_presets())
-        .map_err(|e| anyhow::anyhow!("GUI error: {e}"))?;
+    gui::run(tx, shared, factory_presets()).map_err(|e| anyhow::anyhow!("GUI error: {e}"))?;
 
     Ok(())
 }

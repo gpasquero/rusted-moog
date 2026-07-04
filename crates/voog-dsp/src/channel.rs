@@ -21,7 +21,11 @@ impl Default for Channel {
 impl Channel {
     pub fn new() -> Self {
         let patch = Patch::default();
-        let mut ch = Self { patch, allocator: VoiceAllocator::new(MAX_VOICES), volume: 1.0 };
+        let mut ch = Self {
+            patch,
+            allocator: VoiceAllocator::new(MAX_VOICES),
+            volume: 1.0,
+        };
         ch.reapply_patch();
         ch
     }

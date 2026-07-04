@@ -57,7 +57,12 @@ fn build() -> Wavetables {
         *tr = acc * (8.0 / (PI * PI));
     }
 
-    Wavetables { sine, saw, square, triangle }
+    Wavetables {
+        sine,
+        saw,
+        square,
+        triangle,
+    }
 }
 
 static TABLES: OnceLock<Wavetables> = OnceLock::new();

@@ -47,14 +47,21 @@ impl Synth {
     }
 
     pub fn active_voice_count(&self) -> usize {
-        self.channels.iter().map(|c| c.allocator.active_voice_count()).sum()
+        self.channels
+            .iter()
+            .map(|c| c.allocator.active_voice_count())
+            .sum()
     }
 
     /// Apply one control event to the engine.
     pub fn apply_event(&mut self, ev: Event) {
         match ev {
             Event::MasterVolume(v) => self.set_master_volume(v),
-            Event::NoteOn { channel, note, velocity } => {
+            Event::NoteOn {
+                channel,
+                note,
+                velocity,
+            } => {
                 if let Some(c) = self.channel_mut(channel) {
                     if velocity > 0 {
                         c.note_on(note, velocity);
@@ -73,17 +80,28 @@ impl Synth {
                     c.all_notes_off();
                 }
             }
-            Event::SetParam { channel, param, value } => {
+            Event::SetParam {
+                channel,
+                param,
+                value,
+            } => {
                 if let Some(c) = self.channel_mut(channel) {
                     c.set_param(param, value);
                 }
             }
-            Event::SetOscWaveform { channel, osc, waveform } => {
+            Event::SetOscWaveform {
+                channel,
+                osc,
+                waveform,
+            } => {
                 if let Some(c) = self.channel_mut(channel) {
                     c.set_osc_waveform(osc, waveform);
                 }
             }
-            Event::SetNoiseType { channel, noise_type } => {
+            Event::SetNoiseType {
+                channel,
+                noise_type,
+            } => {
                 if let Some(c) = self.channel_mut(channel) {
                     c.set_noise_type(noise_type);
                 }
@@ -159,7 +177,11 @@ mod tests {
     #[test]
     fn note_on_makes_sound_and_peaks() {
         let mut s = Synth::new();
-        s.apply_event(Event::NoteOn { channel: 0, note: 69, velocity: 110 });
+        s.apply_event(Event::NoteOn {
+            channel: 0,
+            note: 69,
+            velocity: 110,
+        });
         let mut out = [0.0f32; 1024];
         s.render(&mut out);
         assert!(out.iter().any(|&x| x.abs() > 1e-3));
@@ -172,7 +194,11 @@ mod tests {
     #[test]
     fn arbitrary_length_render_is_chunked_safely() {
         let mut s = Synth::new();
-        s.apply_event(Event::NoteOn { channel: 1, note: 60, velocity: 100 });
+        s.apply_event(Event::NoteOn {
+            channel: 1,
+            note: 60,
+            velocity: 100,
+        });
         // Non-multiple of BUFFER_SIZE exercises the chunk remainder path.
         let mut out = [0.0f32; 700];
         s.render(&mut out);
@@ -182,8 +208,15 @@ mod tests {
     #[test]
     fn events_route_to_channels() {
         let mut s = Synth::new();
-        s.apply_event(Event::SetOscWaveform { channel: 0, osc: 0, waveform: Waveform::Square });
-        assert_eq!(s.channels[0].patch.oscillators[0].waveform, Waveform::Square);
+        s.apply_event(Event::SetOscWaveform {
+            channel: 0,
+            osc: 0,
+            waveform: Waveform::Square,
+        });
+        assert_eq!(
+            s.channels[0].patch.oscillators[0].waveform,
+            Waveform::Square
+        );
         s.apply_event(Event::MasterVolume(0.5));
         assert_eq!(s.master_volume(), 0.5);
     }

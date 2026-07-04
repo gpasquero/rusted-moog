@@ -4,7 +4,7 @@
 //! amp VCA, with dual ADSR envelopes, LFO modulation and glide. All work uses
 //! pre-allocated scratch buffers so the audio thread never allocates.
 
-use crate::config::{midi_to_freq, BUFFER_SIZE, NUM_OSCILLATORS, A4_FREQ};
+use crate::config::{midi_to_freq, A4_FREQ, BUFFER_SIZE, NUM_OSCILLATORS};
 use crate::envelope::Adsr;
 use crate::filter::MoogFilter;
 use crate::glide::Glide;
@@ -180,7 +180,11 @@ impl Voice {
         mix.fill(0.0);
         for osc in &mut self.oscillators {
             if osc.level > 0.0 {
-                let pm = if pitch_is_lfo { Some(&pitch_mod[..n]) } else { None };
+                let pm = if pitch_is_lfo {
+                    Some(&pitch_mod[..n])
+                } else {
+                    None
+                };
                 osc.process_add(mean_freq, mix, pm);
             }
         }
@@ -274,7 +278,10 @@ mod tests {
         let mut out = [0.0f32; 256];
         v.render_add(&mut out);
         assert!(v.active);
-        assert!(out.iter().any(|&s| s.abs() > 1e-4), "voice should produce audio");
+        assert!(
+            out.iter().any(|&s| s.abs() > 1e-4),
+            "voice should produce audio"
+        );
         assert!(out.iter().all(|&s| s.is_finite()));
     }
 

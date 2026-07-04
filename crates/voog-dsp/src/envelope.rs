@@ -186,10 +186,7 @@ mod tests {
 
     fn all_in_unit_range(buf: &[f32]) {
         for &s in buf {
-            assert!(
-                (0.0..=1.0).contains(&s),
-                "sample {s} out of [0,1] range"
-            );
+            assert!((0.0..=1.0).contains(&s), "sample {s} out of [0,1] range");
         }
     }
 
@@ -207,7 +204,10 @@ mod tests {
         // First block: should be rising during attack, above zero.
         env.process(&mut buf);
         all_in_unit_range(&buf);
-        assert!(buf[buf.len() - 1] > buf[0], "envelope should rise in attack");
+        assert!(
+            buf[buf.len() - 1] > buf[0],
+            "envelope should rise in attack"
+        );
 
         // Keep processing until we reach the peak (~1.0).
         let mut peak = 0.0f32;
@@ -250,7 +250,10 @@ mod tests {
             env.process(&mut buf);
             all_in_unit_range(&buf);
             for &s in &buf {
-                assert!((s - 0.5).abs() < 1e-4, "sustain should hold at 0.5, got {s}");
+                assert!(
+                    (s - 0.5).abs() < 1e-4,
+                    "sustain should hold at 0.5, got {s}"
+                );
             }
         }
         assert_eq!(env.state, EnvState::Sustain);
@@ -303,7 +306,10 @@ mod tests {
         env.process(&mut buf);
         all_in_unit_range(&buf);
         let peak = buf.iter().cloned().fold(0.0f32, f32::max);
-        assert!(peak > 0.99, "short attack should reach ~1.0 fast, got {peak}");
+        assert!(
+            peak > 0.99,
+            "short attack should reach ~1.0 fast, got {peak}"
+        );
     }
 
     #[test]

@@ -17,7 +17,13 @@ pub struct MoogFilter {
 
 impl Default for MoogFilter {
     fn default() -> Self {
-        Self { cutoff: 8000.0, resonance: 0.0, env_amount: 0.0, key_tracking: 0.0, state: [0.0; 4] }
+        Self {
+            cutoff: 8000.0,
+            resonance: 0.0,
+            env_amount: 0.0,
+            key_tracking: 0.0,
+            state: [0.0; 4],
+        }
     }
 }
 
@@ -43,7 +49,11 @@ impl MoogFilter {
             };
 
             // Pre-warp (matches the numba reference branch).
-            let f = if fc < nyquist { 2.0 * sr * (PI * fc / sr).tan() } else { nyquist * 2.0 };
+            let f = if fc < nyquist {
+                2.0 * sr * (PI * fc / sr).tan()
+            } else {
+                nyquist * 2.0
+            };
             let g = f / (2.0 * sr);
             let big_g = g / (1.0 + g);
 
@@ -120,8 +130,14 @@ mod tests {
         let in_rms = rms(&input);
         let out_rms = rms(&io);
         // Roughly unchanged in level (tolerant band).
-        assert!(out_rms > in_rms * 0.4, "expected pass-through, got {out_rms} vs {in_rms}");
-        assert!(out_rms < in_rms * 2.5, "unexpected gain, got {out_rms} vs {in_rms}");
+        assert!(
+            out_rms > in_rms * 0.4,
+            "expected pass-through, got {out_rms} vs {in_rms}"
+        );
+        assert!(
+            out_rms < in_rms * 2.5,
+            "unexpected gain, got {out_rms} vs {in_rms}"
+        );
     }
 
     #[test]
@@ -129,8 +145,9 @@ mod tests {
         // Feed a high-frequency tone near Nyquist; low cutoff should kill it.
         let n = 4096;
         let freq = SAMPLE_RATE * 0.4;
-        let input: Vec<f32> =
-            (0..n).map(|i| (2.0 * PI * freq * i as f32 / SAMPLE_RATE).sin()).collect();
+        let input: Vec<f32> = (0..n)
+            .map(|i| (2.0 * PI * freq * i as f32 / SAMPLE_RATE).sin())
+            .collect();
 
         let mut f = MoogFilter::new();
         f.cutoff = 200.0; // very low
@@ -141,7 +158,10 @@ mod tests {
         // Ignore the initial transient.
         let in_rms = rms(&input[n / 2..]);
         let out_rms = rms(&io[n / 2..]);
-        assert!(out_rms < in_rms * 0.2, "expected strong attenuation, got {out_rms} vs {in_rms}");
+        assert!(
+            out_rms < in_rms * 0.2,
+            "expected strong attenuation, got {out_rms} vs {in_rms}"
+        );
     }
 
     #[test]
@@ -162,7 +182,10 @@ mod tests {
         split.process(b, None);
 
         for (w, s) in io_whole.iter().zip(io_split.iter()) {
-            assert!((w - s).abs() < 1e-4, "split processing must match whole: {w} vs {s}");
+            assert!(
+                (w - s).abs() < 1e-4,
+                "split processing must match whole: {w} vs {s}"
+            );
         }
     }
 
@@ -171,8 +194,9 @@ mod tests {
         let n = 8192;
         let cutoff = 1000.0;
         // Tone right at the cutoff frequency.
-        let input: Vec<f32> =
-            (0..n).map(|i| (2.0 * PI * cutoff * i as f32 / SAMPLE_RATE).sin()).collect();
+        let input: Vec<f32> = (0..n)
+            .map(|i| (2.0 * PI * cutoff * i as f32 / SAMPLE_RATE).sin())
+            .collect();
 
         let mut low_q = MoogFilter::new();
         low_q.cutoff = cutoff;
@@ -212,6 +236,9 @@ mod tests {
         f2.process(&mut io_plain, None);
 
         assert!(io_mod.iter().all(|x| x.is_finite()));
-        assert!(rms(&io_mod) > rms(&io_plain), "positive cutoff mod should pass more signal");
+        assert!(
+            rms(&io_mod) > rms(&io_plain),
+            "positive cutoff mod should pass more signal"
+        );
     }
 }

@@ -16,7 +16,12 @@ pub struct Glide {
 
 impl Default for Glide {
     fn default() -> Self {
-        Self { time: 0.0, mode: GlideMode::Off, current_freq: 0.0, target_freq: 0.0 }
+        Self {
+            time: 0.0,
+            mode: GlideMode::Off,
+            current_freq: 0.0,
+            target_freq: 0.0,
+        }
     }
 }
 
@@ -29,9 +34,7 @@ impl Glide {
         if self.mode == GlideMode::Off || self.current_freq <= 0.0 {
             self.current_freq = freq;
             self.target_freq = freq;
-        } else if self.mode == GlideMode::Always
-            || (self.mode == GlideMode::Legato && legato)
-        {
+        } else if self.mode == GlideMode::Always || (self.mode == GlideMode::Legato && legato) {
             self.target_freq = freq;
         } else {
             self.current_freq = freq;
@@ -136,7 +139,10 @@ mod tests {
             assert!(s <= 440.0 + 1e-3, "should not overshoot target: {s}");
             prev = s;
         }
-        assert!(prev > 220.0 && prev < 440.0, "should be mid-glide, got {prev}");
+        assert!(
+            prev > 220.0 && prev < 440.0,
+            "should be mid-glide, got {prev}"
+        );
 
         // Process enough samples to converge to the target.
         let mut long = [0.0f32; 44_100];
@@ -145,7 +151,10 @@ mod tests {
         // float epsilon before the 0.01 snap threshold is reached, so it
         // asymptotes very close to (but not exactly at) the target.
         let last = *long.last().unwrap();
-        assert!((last - 440.0).abs() < 0.1, "expected convergence to ~440, got {last}");
+        assert!(
+            (last - 440.0).abs() < 0.1,
+            "expected convergence to ~440, got {last}"
+        );
     }
 
     #[test]

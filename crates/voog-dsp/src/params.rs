@@ -68,7 +68,10 @@ pub struct NoiseParams {
 
 impl Default for NoiseParams {
     fn default() -> Self {
-        Self { noise_type: NoiseType::White, level: 0.0 }
+        Self {
+            noise_type: NoiseType::White,
+            level: 0.0,
+        }
     }
 }
 
@@ -82,7 +85,12 @@ pub struct FilterParams {
 
 impl Default for FilterParams {
     fn default() -> Self {
-        Self { cutoff: 8000.0, resonance: 0.0, env_amount: 0.0, key_tracking: 0.0 }
+        Self {
+            cutoff: 8000.0,
+            resonance: 0.0,
+            env_amount: 0.0,
+            key_tracking: 0.0,
+        }
     }
 }
 
@@ -96,7 +104,12 @@ pub struct AdsrParams {
 
 impl Default for AdsrParams {
     fn default() -> Self {
-        Self { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 }
+        Self {
+            attack: 0.01,
+            decay: 0.1,
+            sustain: 0.7,
+            release: 0.3,
+        }
     }
 }
 
@@ -129,7 +142,10 @@ pub struct GlideParams {
 
 impl Default for GlideParams {
     fn default() -> Self {
-        Self { time: 0.0, mode: GlideMode::Off }
+        Self {
+            time: 0.0,
+            mode: GlideMode::Off,
+        }
     }
 }
 
@@ -151,14 +167,36 @@ impl Default for Patch {
         Self {
             name: "Init".to_string(),
             oscillators: vec![
-                OscParams { waveform: Waveform::Saw, level: 1.0, ..Default::default() },
-                OscParams { waveform: Waveform::Saw, level: 0.0, ..Default::default() },
-                OscParams { waveform: Waveform::Saw, level: 0.0, ..Default::default() },
+                OscParams {
+                    waveform: Waveform::Saw,
+                    level: 1.0,
+                    ..Default::default()
+                },
+                OscParams {
+                    waveform: Waveform::Saw,
+                    level: 0.0,
+                    ..Default::default()
+                },
+                OscParams {
+                    waveform: Waveform::Saw,
+                    level: 0.0,
+                    ..Default::default()
+                },
             ],
             noise: NoiseParams::default(),
             filter: FilterParams::default(),
-            filter_adsr: AdsrParams { attack: 0.01, decay: 0.3, sustain: 0.2, release: 0.3 },
-            amp_adsr: AdsrParams { attack: 0.01, decay: 0.1, sustain: 0.7, release: 0.3 },
+            filter_adsr: AdsrParams {
+                attack: 0.01,
+                decay: 0.3,
+                sustain: 0.2,
+                release: 0.3,
+            },
+            amp_adsr: AdsrParams {
+                attack: 0.01,
+                decay: 0.1,
+                sustain: 0.7,
+                release: 0.3,
+            },
             lfo: LfoParams::default(),
             glide: GlideParams::default(),
             master_volume: 0.7,

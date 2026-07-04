@@ -189,7 +189,10 @@ mod tests {
         osc_split.process_add(freq, &mut b, None);
 
         for i in 0..n {
-            assert!((single[i] - a[i]).abs() < 1e-6, "first half mismatch at {i}");
+            assert!(
+                (single[i] - a[i]).abs() < 1e-6,
+                "first half mismatch at {i}"
+            );
             assert!(
                 (single[n + i] - b[i]).abs() < 1e-6,
                 "second half mismatch at {i}"

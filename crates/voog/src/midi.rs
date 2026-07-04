@@ -36,9 +36,9 @@ fn cc_target(cc: u8) -> Option<(CcTarget, f32, f32)> {
         71 => (CcTarget::Param(ParamId::FilterResonance), 0.0, 1.0), // Resonance
         74 => (CcTarget::Param(ParamId::FilterCutoff), 20.0, 20000.0), // Cutoff (brightness)
         73 => (CcTarget::Param(ParamId::AmpAttack), 0.001, 2.0), // Amp attack time
-        75 => (CcTarget::Param(ParamId::AmpDecay), 0.001, 2.0),  // Amp decay time
+        75 => (CcTarget::Param(ParamId::AmpDecay), 0.001, 2.0), // Amp decay time
         72 => (CcTarget::Param(ParamId::AmpRelease), 0.001, 3.0), // Amp release time
-        76 => (CcTarget::Param(ParamId::LfoRate), 0.1, 20.0),    // LFO rate (vibrato rate)
+        76 => (CcTarget::Param(ParamId::LfoRate), 0.1, 20.0), // LFO rate (vibrato rate)
         77 => (CcTarget::Param(ParamId::FilterEnvAmount), 0.0, 48.0), // Filter envelope amount
         78 => (CcTarget::Param(ParamId::FilterAttack), 0.001, 2.0), // Filter attack
         79 => (CcTarget::Param(ParamId::FilterDecay), 0.001, 2.0), // Filter decay
@@ -84,7 +84,11 @@ fn parse_message(bytes: &[u8], default_channel: u8) -> Option<Event> {
             let note = *bytes.get(1)? as i32;
             let velocity = *bytes.get(2)?;
             if velocity > 0 {
-                Some(Event::NoteOn { channel, note, velocity })
+                Some(Event::NoteOn {
+                    channel,
+                    note,
+                    velocity,
+                })
             } else {
                 // Velocity 0 is a note-off by convention.
                 Some(Event::NoteOff { channel, note })
@@ -106,7 +110,11 @@ fn parse_message(bytes: &[u8], default_channel: u8) -> Option<Event> {
             let (target, min, max) = cc_target(control)?;
             let scaled = scale_cc(value, min, max);
             match target {
-                CcTarget::Param(param) => Some(Event::SetParam { channel, param, value: scaled }),
+                CcTarget::Param(param) => Some(Event::SetParam {
+                    channel,
+                    param,
+                    value: scaled,
+                }),
                 CcTarget::MasterVolume => Some(Event::MasterVolume(scaled)),
             }
         }
@@ -153,7 +161,11 @@ mod tests {
         // Channel 2, note 60, velocity 100.
         let ev = parse_message(&[0x92, 60, 100], 0).unwrap();
         match ev {
-            Event::NoteOn { channel, note, velocity } => {
+            Event::NoteOn {
+                channel,
+                note,
+                velocity,
+            } => {
                 assert_eq!(channel, 2);
                 assert_eq!(note, 60);
                 assert_eq!(velocity, 100);
@@ -201,7 +213,11 @@ mod tests {
         // CC 74 (filter cutoff) at max value -> 20000 Hz.
         let ev = parse_message(&[0xB0, 74, 127], 0).unwrap();
         match ev {
-            Event::SetParam { channel, param, value } => {
+            Event::SetParam {
+                channel,
+                param,
+                value,
+            } => {
                 assert_eq!(channel, 0);
                 assert_eq!(param, ParamId::FilterCutoff);
                 assert!((value - 20000.0).abs() < 1e-3, "value = {value}");

@@ -17,7 +17,12 @@ pub struct NoiseGenerator {
 
 impl Default for NoiseGenerator {
     fn default() -> Self {
-        Self { noise_type: NoiseType::White, level: 0.0, b: [0.0; 7], rng: 0x1234_5678 }
+        Self {
+            noise_type: NoiseType::White,
+            level: 0.0,
+            b: [0.0; 7],
+            rng: 0x1234_5678,
+        }
     }
 }
 
@@ -113,7 +118,10 @@ mod tests {
         let mut sum = 0.0f64;
         for &s in &out {
             assert!(s.is_finite(), "white sample must be finite");
-            assert!(s.abs() <= 1.0, "white sample must be within [-1, 1], got {s}");
+            assert!(
+                s.abs() <= 1.0,
+                "white sample must be within [-1, 1], got {s}"
+            );
             sum += s as f64;
         }
         let mean = sum / out.len() as f64;
@@ -128,9 +136,15 @@ mod tests {
         let mut out = vec![0.0f32; 10_000];
         ng.process_add(&mut out);
 
-        assert!(out.iter().all(|&s| s.is_finite()), "pink samples must be finite");
+        assert!(
+            out.iter().all(|&s| s.is_finite()),
+            "pink samples must be finite"
+        );
         let first = out[0];
-        assert!(out.iter().any(|&s| s != first), "pink noise must not be constant");
+        assert!(
+            out.iter().any(|&s| s != first),
+            "pink noise must not be constant"
+        );
     }
 
     #[test]
@@ -141,10 +155,16 @@ mod tests {
         let mut out = [1.0f32; 256];
         ng.process_add(&mut out);
         // Each sample should be 1.0 + noise, within [1 - level, 1 + level].
-        assert!(out.iter().any(|&s| s != 1.0), "process_add must add noise onto existing content");
+        assert!(
+            out.iter().any(|&s| s != 1.0),
+            "process_add must add noise onto existing content"
+        );
         for &s in &out {
             assert!(s.is_finite());
-            assert!((0.5..=1.5).contains(&s), "accumulated value out of range: {s}");
+            assert!(
+                (0.5..=1.5).contains(&s),
+                "accumulated value out of range: {s}"
+            );
         }
     }
 }

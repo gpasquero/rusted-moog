@@ -35,16 +35,48 @@ pub enum ParamId {
 /// An event applied to the engine. `channel` selects the multitimbral channel.
 #[derive(Debug, Clone)]
 pub enum Event {
-    NoteOn { channel: u8, note: i32, velocity: u8 },
-    NoteOff { channel: u8, note: i32 },
-    AllNotesOff { channel: u8 },
-    SetParam { channel: u8, param: ParamId, value: f32 },
-    SetOscWaveform { channel: u8, osc: usize, waveform: Waveform },
-    SetNoiseType { channel: u8, noise_type: NoiseType },
-    SetLfoWaveform { channel: u8, waveform: Waveform },
-    SetLfoDest { channel: u8, dest: LfoDest },
-    SetGlideMode { channel: u8, mode: GlideMode },
-    LoadPatch { channel: u8, patch: Box<Patch> },
+    NoteOn {
+        channel: u8,
+        note: i32,
+        velocity: u8,
+    },
+    NoteOff {
+        channel: u8,
+        note: i32,
+    },
+    AllNotesOff {
+        channel: u8,
+    },
+    SetParam {
+        channel: u8,
+        param: ParamId,
+        value: f32,
+    },
+    SetOscWaveform {
+        channel: u8,
+        osc: usize,
+        waveform: Waveform,
+    },
+    SetNoiseType {
+        channel: u8,
+        noise_type: NoiseType,
+    },
+    SetLfoWaveform {
+        channel: u8,
+        waveform: Waveform,
+    },
+    SetLfoDest {
+        channel: u8,
+        dest: LfoDest,
+    },
+    SetGlideMode {
+        channel: u8,
+        mode: GlideMode,
+    },
+    LoadPatch {
+        channel: u8,
+        patch: Box<Patch>,
+    },
     MasterVolume(f32),
 }
 

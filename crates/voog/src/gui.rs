@@ -5,14 +5,12 @@
 //! VU meter, virtual keyboard, preset/channel selectors and the dark theme).
 
 use crate::shared::{EventSender, SharedState};
-use egui::{
-    pos2, vec2, Align2, Color32, Context, FontId, Pos2, Rect, RichText, Sense, Stroke, Ui,
-};
+use egui::{pos2, vec2, Align2, Color32, Context, FontId, Pos2, Rect, RichText, Sense, Stroke, Ui};
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
-use voog_dsp::params::{GlideMode, LfoDest, NoiseType, Patch, Waveform};
 use voog_dsp::event::ParamId;
+use voog_dsp::params::{GlideMode, LfoDest, NoiseType, Patch, Waveform};
 use voog_dsp::Event;
 
 // ── Moog-inspired palette ──────────────────────────────────────────────────
@@ -189,16 +187,17 @@ fn knob(
     };
     painter.add(egui::Shape::line(arc(0.0, 1.0), Stroke::new(3.0, TROUGH)));
     if ratio > 0.004 {
-        painter.add(egui::Shape::line(
-            arc(0.0, ratio),
-            Stroke::new(3.0, ACCENT),
-        ));
+        painter.add(egui::Shape::line(arc(0.0, ratio), Stroke::new(3.0, ACCENT)));
     }
 
     // Knob body
     let r_body = 15.0;
     painter.circle_filled(center, r_body, Color32::from_rgb(0x2c, 0x2c, 0x2c));
-    painter.circle_stroke(center, r_body, Stroke::new(1.5, Color32::from_rgb(0x44, 0x44, 0x44)));
+    painter.circle_stroke(
+        center,
+        r_body,
+        Stroke::new(1.5, Color32::from_rgb(0x44, 0x44, 0x44)),
+    );
     painter.circle_filled(center, 2.0, Color32::from_rgb(0x40, 0x40, 0x40));
 
     // Pointer
@@ -604,7 +603,16 @@ impl App {
             ui.horizontal(|ui| {
                 let f = self.patch.filter;
                 let mut cut = f.cutoff;
-                if knob(ui, "CUTOFF", &mut cut, 20.0, 20000.0, true, 8000.0, KFmt::Hz) {
+                if knob(
+                    ui,
+                    "CUTOFF",
+                    &mut cut,
+                    20.0,
+                    20000.0,
+                    true,
+                    8000.0,
+                    KFmt::Hz,
+                ) {
                     self.set_param(ParamId::FilterCutoff, cut);
                 }
                 let mut res = f.resonance;
@@ -938,11 +946,7 @@ impl eframe::App for App {
 }
 
 /// Run the GUI on the main thread (blocks until the window closes).
-pub fn run(
-    tx: EventSender,
-    shared: Arc<SharedState>,
-    presets: Vec<Patch>,
-) -> eframe::Result<()> {
+pub fn run(tx: EventSender, shared: Arc<SharedState>, presets: Vec<Patch>) -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Rusted Moog")

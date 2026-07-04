@@ -1,73 +1,104 @@
-# Rusted Moog
+<div align="center">
 
-A **virtual analog synthesizer** written in Rust — a from-scratch port of the
-Python [VOOG](https://github.com/gpasquero/voog) synth, rebuilt for real-time,
-glitch-free audio with a modern GUI.
+# 🎛️ Rusted Moog
 
-> Why the rewrite? The Python engine suffered from audio dropouts caused by
-> garbage-collection pauses and GIL contention inside the audio callback. Rust
-> gives us deterministic, allocation-free real-time audio: no GC, no glitches.
+### A real-time, glitch-free virtual analog synthesizer — written from scratch in Rust.
 
-## Architecture
+*A Minimoog-inspired 3-oscillator polysynth with a Moog ladder filter, born from a Python synth that couldn't stop clicking.*
+
+[![Rust](https://img.shields.io/badge/Rust-2021-CE422B?logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![CI](https://github.com/gpasquero/rusted-moog/actions/workflows/ci.yml/badge.svg)](https://github.com/gpasquero/rusted-moog/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-62%20passing-brightgreen)](#testing)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)](#build--run)
+
+</div>
+
+---
+
+## Why does this exist?
+
+It started as **VOOG**, a synth written in Python + NumPy. It sounded great — until you played a chord. Then it *clicked*, *popped*, and *dropped out*. The culprit wasn't CPU power; it was **garbage-collection pauses and GIL contention firing inside the audio callback**, blowing the 5.8 ms real-time deadline at random.
+
+You can't fix that with faster Python. So we rewrote the whole thing in Rust:
+
+> **No garbage collector. No locks in the audio thread. No allocations in the hot path. No glitches.**
+
+Same synth architecture, deterministic real-time audio, and a GUI that actually looks like hardware.
+
+## ✨ Features
+
+- 🎚️ **3 oscillators** — sine / saw / square / triangle, band-limited wavetables, per-osc octave, semitone, detune & level
+- 🔊 **Moog ladder filter** — authentic Huovilainen 24 dB/oct model with resonance, envelope & key-tracking
+- 📈 **Dual ADSR envelopes** — independent amp & filter contours
+- 🌊 **LFO** — 4 waveforms, routable to filter / pitch / amp
+- 🎹 **8-voice polyphony × 4 multitimbral channels** with oldest-note voice stealing
+- 🎛️ **Glide/portamento** (off / always / legato) + white & pink noise
+- 🎼 **19 factory presets** — from sub basses to screaming leads
+- 🎨 **Minimoog-inspired GUI** — custom rotary knobs, VU meter, virtual keyboard (mouse + QWERTY)
+- 🎹 **MIDI input** with a full CC map (graceful fallback with no device)
+
+## 🏗️ Architecture
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │  crate: voog  (binary)                                         │
 │                                                                │
-│   egui GUI  ──params/notes──►  lock-free channel  ──►  audio   │
-│   (main thread)                (ringbuf)              callback  │
+│   egui GUI  ──params/notes──►  lock-free queue  ──►  audio     │
+│   (main thread)                (crossbeam)          callback   │
 │        ▲                                            (cpal RT)   │
-│        └──────────── VU / voice count ◄────────────────┘       │
+│        └──────────── VU / voices ◄─── atomics ─────────┘       │
 │                                                                │
-│   midir  ──MIDI events──►  same lock-free channel              │
+│   midir  ──MIDI events──►  same lock-free queue                │
 └──────────────────────────────────────────────────────────────┘
-              │ depends on
-              ▼
+                     │ depends on
+                     ▼
 ┌──────────────────────────────────────────────────────────────┐
-│  crate: voog-dsp  (library, no I/O, fully unit-tested)         │
+│  crate: voog-dsp  (library — no I/O, 100% unit-tested)         │
 │   oscillator · moog filter · adsr · lfo · noise · glide        │
-│   wavetables · params (patch model) · config                   │
+│   voice · allocator · channel · synth · presets · params       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
-**Real-time discipline:** the audio callback never allocates and never locks.
-The GUI and MIDI threads communicate with the engine through a lock-free
-ring buffer of events (note on/off, parameter changes). This is what eliminates
-the dropouts the Python version had.
+**The real-time contract:** the audio callback never allocates and never locks. The GUI and MIDI threads push events onto a lock-free ring; the callback drains them, renders one block, and publishes meters via atomics. That single discipline is what killed the dropouts.
 
-## Signal chain (per voice)
+## 🚀 Build & run
 
-3 oscillators (+ noise) → Moog ladder filter (24 dB/oct) → amp VCA
-with dual ADSR envelopes (amp + filter), an LFO (filter/pitch/amp), and
-glide/portamento. 4 multitimbral channels × 8-voice polyphony.
-
-## Feature parity target (with Python VOOG)
-
-- [x] `voog-dsp` core: oscillator, filter, envelope, LFO, noise, glide
-- [ ] Voice / polyphony / voice-stealing allocator
-- [ ] Multitimbral channels + master engine
-- [ ] cpal audio output (lock-free event queue)
-- [ ] MIDI input (midir) with the same CC map
-- [ ] Patch model + built-in presets + save/load (JSON, compatible with VOOG)
-- [ ] egui GUI: rotary knobs, VU meter, virtual keyboard, dark Moog theme
-
-## Build & run
+Requires a [stable Rust toolchain](https://rustup.rs/) (edition 2021).
 
 ```bash
-cargo test          # run the DSP unit-test suite
-cargo run --release # launch the synth
+git clone https://github.com/gpasquero/rusted-moog.git
+cd rusted-moog
+cargo run --release
 ```
 
-Requires a stable Rust toolchain (`rustup`, edition 2021).
+Play with your **mouse** on the on-screen keyboard, your **computer keyboard** (`A W S E D F T G Y H U J K`), or a **MIDI controller**.
 
-## Layout
+## 🧪 Testing
 
+The entire DSP + engine core is pure and unit-tested — no audio device required:
+
+```bash
+cargo test --workspace   # 62 tests
+cargo clippy --workspace # zero warnings
 ```
-crates/
-  voog-dsp/   # pure DSP, no I/O — the testable heart
-  voog/       # engine + cpal audio + midir + egui GUI  (added in later phases)
-```
 
-## License
+## 🗺️ Roadmap
 
-MIT
+- [ ] Patch save/load to disk (JSON, VOOG-compatible)
+- [ ] Oversampling for the filter at high resonance
+- [ ] Effects: chorus / delay / drive
+- [ ] Stereo spread & unison
+- [ ] Web build via WASM + WebAudio
+
+## 🙏 Credits
+
+Ladder filter after Antti Huovilainen's model. Pink noise via Paul Kellet's approximation. Inspired by the **Moog Minimoog Model D** and **Subsequent 37**. Rebuilt in Rust with [`cpal`](https://github.com/RustAudio/cpal), [`midir`](https://github.com/Boddlnagg/midir) and [`egui`](https://github.com/emilk/egui).
+
+## 📄 License
+
+MIT © gpasquero — see [LICENSE](LICENSE).
+
+<div align="center">
+<sub>Built because software instruments should never click.</sub>
+</div>

@@ -79,7 +79,11 @@ impl Lfo {
                 self.phase -= 1.0;
             }
 
-            let bs = if i < n_blocks { CONTROL_RATE_DIVIDER } else { remainder };
+            let bs = if i < n_blocks {
+                CONTROL_RATE_DIVIDER
+            } else {
+                remainder
+            };
             if bs == 0 {
                 prev = cur;
                 continue;
