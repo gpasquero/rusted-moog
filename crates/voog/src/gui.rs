@@ -1634,6 +1634,13 @@ impl eframe::App for App {
             .show(ctx, |ui| self.body(ui));
 
         self.handle_screenshot(ctx);
+
+        // Native: repaint every frame for smooth meters (audio is on its own
+        // thread). Web: throttle to ~30 fps so the main-thread audio scheduler
+        // isn't starved by continuous canvas rendering (prevents crackle).
+        #[cfg(target_arch = "wasm32")]
+        ctx.request_repaint_after(std::time::Duration::from_millis(33));
+        #[cfg(not(target_arch = "wasm32"))]
         ctx.request_repaint();
     }
 }

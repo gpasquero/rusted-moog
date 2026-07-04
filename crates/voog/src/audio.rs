@@ -13,7 +13,7 @@ use voog_dsp::Synth;
 
 /// Generous upper bound for the mono render scratch. Blocks larger than this are
 /// clamped rather than allocated, keeping the callback allocation-free.
-const MAX_BLOCK: usize = 4096;
+const MAX_BLOCK: usize = 8192;
 
 /// Build and start the output stream. The returned `Stream` must be kept alive
 /// for audio to keep flowing.
@@ -37,7 +37,17 @@ pub fn start(
     }
 
     let channels = config.channels() as usize;
-    let stream_config: cpal::StreamConfig = config.into();
+    #[allow(unused_mut)]
+    let mut stream_config: cpal::StreamConfig = config.into();
+
+    // On the web, cpal drives audio from a main-thread timer that competes with
+    // egui's canvas rendering. A larger fixed buffer gives the scheduler much
+    // more lead time, so main-thread jank no longer causes dropouts (trading a
+    // little latency for glitch-free playback). Native keeps the device default.
+    #[cfg(target_arch = "wasm32")]
+    {
+        stream_config.buffer_size = cpal::BufferSize::Fixed(4096);
+    }
 
     // Move the engine into the callback. Pre-allocate the mono scratch buffer
     // OUTSIDE the callback so the real-time thread never allocates.
