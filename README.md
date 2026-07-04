@@ -16,6 +16,8 @@
 
 *(A live preview of the Minimoog-style UI — turn the knobs, play the keys, it makes real sound.)*
 
+<img src="docs/img/panel.png" alt="Rusted Moog — Minimoog Model D-inspired panel rendered in Rust + egui: anodized panel, brushed-aluminium fluted knobs, red paddle switches, oak wood cheeks" width="900">
+
 </div>
 
 ---

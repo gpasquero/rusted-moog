@@ -730,6 +730,10 @@ struct App {
     peak_db: f32,
     // real oak-wood photo texture for the side cheeks (None = procedural fallback)
     wood_tex: Option<egui::TextureHandle>,
+    // Automated screenshot: when VOOG_SHOT=<path> is set, render a few frames,
+    // grab the framebuffer to a PNG and quit. Used to generate docs images.
+    shot_path: Option<String>,
+    shot_frame: u32,
 }
 
 /// Decode the embedded oak-wood photo into a GPU texture (once).
@@ -770,9 +774,46 @@ impl App {
             vu_db: -60.0,
             peak_db: -60.0,
             wood_tex,
+            shot_path: std::env::var("VOOG_SHOT").ok(),
+            shot_frame: 0,
         };
         app.sync_shadows();
         app
+    }
+
+    /// When `VOOG_SHOT=<path>` is set: let the UI settle a few frames, request a
+    /// framebuffer screenshot, save it as PNG and close. No OS screen-recording
+    /// permission needed — it reads the app's own rendered image.
+    fn handle_screenshot(&mut self, ctx: &Context) {
+        if self.shot_path.is_none() {
+            return;
+        }
+        self.shot_frame += 1;
+        let shot = ctx.input(|i| {
+            i.events.iter().find_map(|e| match e {
+                egui::Event::Screenshot { image, .. } => Some(image.clone()),
+                _ => None,
+            })
+        });
+        if let Some(img) = shot {
+            let [w, h] = img.size;
+            let mut rgba = Vec::with_capacity(w * h * 4);
+            for p in img.pixels.iter() {
+                rgba.extend_from_slice(&p.to_array());
+            }
+            if let Some(path) = &self.shot_path {
+                let _ = image::save_buffer(
+                    path,
+                    &rgba,
+                    w as u32,
+                    h as u32,
+                    image::ExtendedColorType::Rgba8,
+                );
+            }
+            ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+        } else if self.shot_frame == 12 {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot);
+        }
     }
 
     fn install_theme(ctx: &Context) {
@@ -1534,6 +1575,7 @@ impl eframe::App for App {
             .frame(egui::Frame::none().fill(PANEL_BOT).inner_margin(8.0))
             .show(ctx, |ui| self.body(ui));
 
+        self.handle_screenshot(ctx);
         ctx.request_repaint();
     }
 }
@@ -1543,8 +1585,8 @@ pub fn run(tx: EventSender, shared: Arc<SharedState>, presets: Vec<Patch>) -> ef
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Rusted Moog")
-            .with_inner_size([1060.0, 780.0])
-            .with_min_inner_size([840.0, 620.0]),
+            .with_inner_size([1080.0, 940.0])
+            .with_min_inner_size([860.0, 720.0]),
         ..Default::default()
     };
     eframe::run_native(
