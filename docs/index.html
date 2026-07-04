@@ -36,10 +36,12 @@
   }
   .sub{margin:12px 0 0;color:var(--ink-dim);font-size:14px;letter-spacing:.02em}
   .sub b{color:var(--ink);font-weight:600}
-  .shot{margin:6px 0 2px;width:min(1000px,100%);text-align:center}
-  .shot img{width:100%;height:auto;border-radius:12px;border:1px solid #2a2320;
-    box-shadow:0 30px 70px -28px rgba(0,0,0,.85)}
-  .shot figcaption{margin-top:10px;color:var(--ink-dim);font-size:13px;letter-spacing:.02em}
+  .cta{margin:18px 0 0}
+  .cta a{display:inline-block;text-decoration:none;color:var(--amber);
+    border:1px solid var(--amber-dim);padding:8px 18px;border-radius:8px;
+    font-size:13px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;
+    background:linear-gradient(180deg,rgba(232,160,37,.10),rgba(0,0,0,0));transition:background .12s}
+  .cta a:hover{background:rgba(232,160,37,.18)}
 
   /* ---- the instrument ---- */
   .instrument{
@@ -192,12 +194,8 @@
   <p class="eyebrow">Virtual Analog Synthesizer · Rust</p>
   <h1 class="wordmark">Rusted Moog</h1>
   <p class="sub">A real-time, glitch-free polysynth — <b>Minimoog</b>-inspired panel, <b>Moog ladder filter</b>, zero garbage collection in the audio path.</p>
+  <p class="cta"><a href="https://github.com/gpasquero/rusted-moog">★ Get the app on GitHub</a></p>
 </header>
-
-<figure class="shot">
-  <img src="img/panel.png" alt="The Rusted Moog desktop app rendered in Rust + egui">
-  <figcaption>The actual desktop app — rendered in Rust&nbsp;+&nbsp;egui. Try the interactive browser preview below. 👇</figcaption>
-</figure>
 
 <main class="instrument" aria-label="Rusted Moog control panel">
   <div class="panel">
@@ -249,7 +247,7 @@
   </div>
 </main>
 
-<p class="hint">Turn knobs by dragging up/down. Play with your mouse or the <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd>… keys — it makes real sound. This is a static preview of the desktop app's panel.</p>
+<p class="hint">Turn knobs by dragging up/down. Play with your mouse or the <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> <kbd>F</kbd>… keys — it makes real sound. This is a browser recreation; the real synth is a native Rust app — <a href="https://github.com/gpasquero/rusted-moog" style="color:var(--amber)">get it on GitHub</a>.</p>
 
 <script>
 (function(){
