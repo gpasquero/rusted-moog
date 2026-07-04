@@ -1,0 +1,14 @@
+[package]
+name = "voog-dsp"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Pure DSP core: NO audio I/O, NO GUI. Real-time-safe (no heap allocation in
+# the hot path once constructed). Fully unit-testable with `cargo test`.
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+approx = "0.5"
