@@ -25,6 +25,7 @@ pub mod noise;
 pub mod oscillator;
 
 // Engine layer (pure logic, no audio I/O — fully unit-testable).
+pub mod arpeggiator;
 pub mod channel;
 pub mod event;
 pub mod patches;
@@ -41,6 +42,7 @@ pub use noise::NoiseGenerator;
 pub use oscillator::Oscillator;
 pub use params::*;
 
+pub use arpeggiator::{ArpMode, Arpeggiator};
 pub use channel::Channel;
 pub use event::{Event, ParamId};
 pub use synth::Synth;

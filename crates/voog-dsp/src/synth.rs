@@ -126,6 +126,36 @@ impl Synth {
                     c.set_patch(*patch);
                 }
             }
+            Event::SetArpEnabled { channel, on } => {
+                if let Some(c) = self.channel_mut(channel) {
+                    c.set_arp_enabled(on);
+                }
+            }
+            Event::SetArpMode { channel, mode } => {
+                if let Some(c) = self.channel_mut(channel) {
+                    c.set_arp_mode(mode);
+                }
+            }
+            Event::SetArpOctaves { channel, octaves } => {
+                if let Some(c) = self.channel_mut(channel) {
+                    c.set_arp_octaves(octaves);
+                }
+            }
+            Event::SetArpRate { channel, value } => {
+                if let Some(c) = self.channel_mut(channel) {
+                    c.set_arp_rate(value);
+                }
+            }
+            Event::SetArpGate { channel, value } => {
+                if let Some(c) = self.channel_mut(channel) {
+                    c.set_arp_gate(value);
+                }
+            }
+            Event::SetArpHold { channel, on } => {
+                if let Some(c) = self.channel_mut(channel) {
+                    c.set_arp_hold(on);
+                }
+            }
         }
     }
 

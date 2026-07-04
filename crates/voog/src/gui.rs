@@ -12,6 +12,7 @@ use egui::{pos2, vec2, Align2, Color32, Context, FontId, Pos2, Rect, RichText, S
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
+use voog_dsp::arpeggiator::ArpMode;
 use voog_dsp::event::ParamId;
 use voog_dsp::params::{GlideMode, LfoDest, NoiseType, Patch, Waveform};
 use voog_dsp::Event;
@@ -74,6 +75,13 @@ const GLIDE_MODES: [(GlideMode, &str); 3] = [
     (GlideMode::Always, "ALWAYS"),
     (GlideMode::Legato, "LEGATO"),
 ];
+const ARP_MODES: [(ArpMode, &str); 4] = [
+    (ArpMode::Up, "UP"),
+    (ArpMode::Down, "DN"),
+    (ArpMode::UpDown, "UP/DN"),
+    (ArpMode::Random, "RND"),
+];
+const ARP_OCTAVES: [(u8, &str); 4] = [(1, "1"), (2, "2"), (3, "3"), (4, "4")];
 
 /// QWERTY -> semitone-offset mapping (matches the Python app).
 const KEY_MAP: [(egui::Key, i32); 16] = [
@@ -720,6 +728,13 @@ pub struct App {
     noise_prev_level: f32,
     // Spring-centered pitch wheel (visual only).
     pitch_wheel: f32,
+    // Arpeggiator mirror state (engine-owned; these track the last sent values).
+    arp_on: bool,
+    arp_mode: ArpMode,
+    arp_octaves: u8,
+    arp_rate: f32,
+    arp_gate: f32,
+    arp_hold: bool,
     // virtual keyboard state
     kbd_octave: i32,
     active_notes: HashSet<i32>,
@@ -777,6 +792,12 @@ impl App {
             osc_prev_level: [1.0; 3],
             noise_prev_level: 0.5,
             pitch_wheel: 0.5,
+            arp_on: false,
+            arp_mode: ArpMode::Up,
+            arp_octaves: 1,
+            arp_rate: 8.0,
+            arp_gate: 0.5,
+            arp_hold: false,
             kbd_octave: 4,
             active_notes: HashSet::new(),
             pc_notes: HashMap::new(),
@@ -1104,10 +1125,11 @@ impl App {
             self.lfo_panel(&mut c[3]);
         });
         ui.add_space(6.0);
-        // Row 3: glide + output/status.
-        ui.columns(2, |c| {
+        // Row 3: glide + arpeggiator + output/status.
+        ui.columns(3, |c| {
             self.glide_panel(&mut c[0]);
-            self.status_panel(&mut c[1]);
+            self.arp_panel(&mut c[1]);
+            self.status_panel(&mut c[2]);
         });
     }
 
@@ -1331,6 +1353,65 @@ impl App {
                 let mut t = self.patch.glide.time;
                 if knob(ui, "TIME", &mut t, 0.0, 1.0, false, 0.0, KFmt::Time) {
                     self.set_param(ParamId::GlideTime, t);
+                }
+            });
+        });
+    }
+
+    fn arp_panel(&mut self, ui: &mut Ui) {
+        panel(ui, "ARPEGGIATOR", |ui| {
+            ui.label(RichText::new("MODE").color(CREAM_DIM).size(8.0));
+            let mut mode = self.arp_mode;
+            if segmented(ui, &mut mode, &ARP_MODES) {
+                self.arp_mode = mode;
+                self.send(Event::SetArpMode {
+                    channel: self.channel,
+                    mode,
+                });
+            }
+            ui.add_space(2.0);
+            ui.label(RichText::new("OCTAVES").color(CREAM_DIM).size(8.0));
+            let mut oct = self.arp_octaves;
+            if segmented(ui, &mut oct, &ARP_OCTAVES) {
+                self.arp_octaves = oct;
+                self.send(Event::SetArpOctaves {
+                    channel: self.channel,
+                    octaves: oct,
+                });
+            }
+            ui.add_space(3.0);
+            ui.horizontal(|ui| {
+                let mut rate = self.arp_rate;
+                if knob(ui, "RATE", &mut rate, 1.0, 25.0, false, 8.0, KFmt::Rate) {
+                    self.arp_rate = rate;
+                    self.send(Event::SetArpRate {
+                        channel: self.channel,
+                        value: rate,
+                    });
+                }
+                let mut gate = self.arp_gate;
+                if knob(ui, "GATE", &mut gate, 0.02, 1.0, false, 0.5, KFmt::Percent) {
+                    self.arp_gate = gate;
+                    self.send(Event::SetArpGate {
+                        channel: self.channel,
+                        value: gate,
+                    });
+                }
+                let mut on = self.arp_on;
+                if rocker(ui, "ON", &mut on) {
+                    self.arp_on = on;
+                    self.send(Event::SetArpEnabled {
+                        channel: self.channel,
+                        on,
+                    });
+                }
+                let mut hold = self.arp_hold;
+                if rocker(ui, "HOLD", &mut hold) {
+                    self.arp_hold = hold;
+                    self.send(Event::SetArpHold {
+                        channel: self.channel,
+                        on: hold,
+                    });
                 }
             });
         });

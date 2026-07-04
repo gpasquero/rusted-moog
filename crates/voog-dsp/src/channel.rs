@@ -1,6 +1,7 @@
 //! A multitimbral channel: owns a patch and a voice allocator.
 //! PORT OF `synth/engine/channel.py`.
 
+use crate::arpeggiator::{ArpAction, ArpMode, Arpeggiator};
 use crate::config::{BUFFER_SIZE, MAX_VOICES};
 use crate::event::ParamId;
 use crate::params::{GlideMode, LfoDest, NoiseType, Patch, Waveform};
@@ -10,6 +11,8 @@ pub struct Channel {
     pub patch: Patch,
     pub allocator: VoiceAllocator,
     pub volume: f32,
+    pub arp: Arpeggiator,
+    arp_actions: Vec<ArpAction>,
 }
 
 impl Default for Channel {
@@ -25,6 +28,8 @@ impl Channel {
             patch,
             allocator: VoiceAllocator::new(MAX_VOICES),
             volume: 1.0,
+            arp: Arpeggiator::new(),
+            arp_actions: Vec::with_capacity(8),
         };
         ch.reapply_patch();
         ch
@@ -42,16 +47,27 @@ impl Channel {
     }
 
     pub fn note_on(&mut self, note: i32, velocity: u8) {
-        let idx = self.allocator.note_on(note, velocity);
-        // Freshly stolen/allocated voice must carry the current patch.
-        self.allocator.voices[idx].apply_patch(&self.patch);
+        if self.arp.enabled {
+            // Route held notes into the arpeggiator; it drives the allocator.
+            self.arp.note_on(note, velocity);
+        } else {
+            let idx = self.allocator.note_on(note, velocity);
+            // Freshly stolen/allocated voice must carry the current patch.
+            self.allocator.voices[idx].apply_patch(&self.patch);
+        }
     }
 
     pub fn note_off(&mut self, note: i32) {
-        self.allocator.note_off(note);
+        if self.arp.enabled {
+            self.arp.note_off(note);
+        } else {
+            self.allocator.note_off(note);
+        }
     }
 
     pub fn all_notes_off(&mut self) {
+        self.arp.reset(&mut self.arp_actions);
+        self.arp_actions.clear();
         self.allocator.all_notes_off();
     }
 
@@ -88,10 +104,60 @@ impl Channel {
         self.reapply_patch();
     }
 
+    // ── Arpeggiator ──
+    pub fn set_arp_enabled(&mut self, on: bool) {
+        if on == self.arp.enabled {
+            return;
+        }
+        self.arp.enabled = on;
+        // Toggling clears any hanging notes so nothing sticks.
+        self.arp.reset(&mut self.arp_actions);
+        self.arp_actions.clear();
+        self.allocator.all_notes_off();
+    }
+
+    pub fn set_arp_mode(&mut self, mode: ArpMode) {
+        self.arp.set_mode(mode);
+    }
+
+    pub fn set_arp_octaves(&mut self, octaves: u8) {
+        self.arp.set_octaves(octaves);
+    }
+
+    pub fn set_arp_rate(&mut self, hz: f32) {
+        self.arp.rate = hz;
+    }
+
+    pub fn set_arp_gate(&mut self, gate: f32) {
+        self.arp.gate = gate;
+    }
+
+    pub fn set_arp_hold(&mut self, on: bool) {
+        self.arp.set_hold(on);
+    }
+
     /// Render all active voices, ADD into `out` (len <= BUFFER_SIZE), scaled by
     /// channel volume and the patch master volume.
     pub fn render_add(&mut self, out: &mut [f32], scratch: &mut [f32; BUFFER_SIZE]) {
         let n = out.len();
+
+        // Advance the arpeggiator clock and apply its note events to the allocator.
+        if self.arp.enabled {
+            self.arp_actions.clear();
+            self.arp.advance(n, &mut self.arp_actions);
+            let mut i = 0;
+            while i < self.arp_actions.len() {
+                match self.arp_actions[i] {
+                    ArpAction::NoteOn { note, velocity } => {
+                        let idx = self.allocator.note_on(note, velocity);
+                        self.allocator.voices[idx].apply_patch(&self.patch);
+                    }
+                    ArpAction::NoteOff { note } => self.allocator.note_off(note),
+                }
+                i += 1;
+            }
+        }
+
         let buf = &mut scratch[..n];
         buf.fill(0.0);
         for v in &mut self.allocator.voices {

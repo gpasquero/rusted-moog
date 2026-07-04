@@ -5,6 +5,7 @@
 //! a lock-free queue and drained inside the audio callback. This keeps the
 //! real-time thread allocation- and lock-free.
 
+use crate::arpeggiator::ArpMode;
 use crate::params::{GlideMode, LfoDest, NoiseType, Patch, Waveform};
 
 /// A continuous (f32-valued) synth parameter, addressable from GUI/MIDI.
@@ -78,6 +79,32 @@ pub enum Event {
         patch: Box<Patch>,
     },
     MasterVolume(f32),
+
+    // ── Arpeggiator (per channel) ──
+    SetArpEnabled {
+        channel: u8,
+        on: bool,
+    },
+    SetArpMode {
+        channel: u8,
+        mode: ArpMode,
+    },
+    SetArpOctaves {
+        channel: u8,
+        octaves: u8,
+    },
+    SetArpRate {
+        channel: u8,
+        value: f32,
+    },
+    SetArpGate {
+        channel: u8,
+        value: f32,
+    },
+    SetArpHold {
+        channel: u8,
+        on: bool,
+    },
 }
 
 impl Patch {
