@@ -16,6 +16,8 @@
 
 *(The actual Rust + egui app compiled to WASM — same panel, same knobs, same sound. No install.)*
 
+*⚠️ In the browser, audio can crackle or lag a little — WebAssembly schedules audio on the main thread. The **native desktop build runs flawlessly** (audio on its own real-time thread). See [Build & run](#-build--run).*
+
 <img src="docs/img/panel.png" alt="Rusted Moog — Minimoog Model D-inspired panel rendered in Rust + egui: anodized panel, brushed-aluminium fluted knobs, red paddle switches, oak wood cheeks" width="900">
 
 </div>
@@ -69,6 +71,9 @@ Same synth architecture, deterministic real-time audio, and a GUI that actually 
 **The real-time contract:** the audio callback never allocates and never locks. The GUI and MIDI threads push events onto a lock-free ring; the callback drains them, renders one block, and publishes meters via atomics. That single discipline is what killed the dropouts.
 
 ## 🚀 Build & run
+
+> [!TIP]
+> **Run the native build for the real experience.** The audio thread is allocation- and lock-free, so it's rock-solid — no clicks, no dropouts. The [in-browser WASM demo](https://gpasquero.github.io/rusted-moog/) is great for a quick try, but browsers schedule audio on the main thread (no cross-origin isolation on GitHub Pages → no audio worklet thread), so it can crackle or add latency. Native has none of that.
 
 Requires a [stable Rust toolchain](https://rustup.rs/) (edition 2021).
 
