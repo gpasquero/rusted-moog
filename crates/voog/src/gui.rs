@@ -1,8 +1,11 @@
-//! egui/eframe GUI for Rusted Moog — a polished, dark "Moog Subsequent 37"
-//! inspired virtual-analog control panel.
+//! egui/eframe GUI for Rusted Moog — restyled to look like a real
+//! **Moog Minimoog Model D** hardware panel.
 //!
-//! Everything lives in this single file on purpose (custom rotary knob widget,
-//! VU meter, virtual keyboard, preset/channel selectors and the dark theme).
+//! Everything lives in this single file on purpose: the brushed-aluminum rotary
+//! knob widget, red rocker switches, segmented waveform selectors, pitch/mod
+//! wheels, the VU meter, the classic keyboard, preset/channel selectors and the
+//! vintage-hardware theme. Only the *look* changed — every control still emits
+//! exactly the same `Event`s as before.
 
 use crate::shared::{EventSender, SharedState};
 use egui::{pos2, vec2, Align2, Color32, Context, FontId, Pos2, Rect, RichText, Sense, Stroke, Ui};
@@ -13,30 +16,56 @@ use voog_dsp::event::ParamId;
 use voog_dsp::params::{GlideMode, LfoDest, NoiseType, Patch, Waveform};
 use voog_dsp::Event;
 
-// ── Moog-inspired palette ──────────────────────────────────────────────────
-const BG: Color32 = Color32::from_rgb(0x14, 0x14, 0x14);
-const PANEL_BG: Color32 = Color32::from_rgb(0x24, 0x24, 0x24);
-const BORDER: Color32 = Color32::from_rgb(0x3a, 0x3a, 0x3a);
-const ACCENT: Color32 = Color32::from_rgb(0xe8, 0xa0, 0x25); // amber
+// ── Minimoog-inspired palette ──────────────────────────────────────────────
+// Dark backdrop behind the whole instrument.
+const BG: Color32 = Color32::from_rgb(0x10, 0x11, 0x12);
+
+// Oak wood side cheeks (base / highlight / shadow for vertical grain).
+const WOOD: Color32 = Color32::from_rgb(0x7a, 0x52, 0x30);
+const WOOD_HI: Color32 = Color32::from_rgb(0x9a, 0x6a, 0x40);
+const WOOD_LO: Color32 = Color32::from_rgb(0x5c, 0x3d, 0x22);
+
+// Near-black anodized-aluminium panel (matte, cool charcoal, top→bottom).
+const PANEL_TOP: Color32 = Color32::from_rgb(0x22, 0x26, 0x2a);
+const PANEL_BOT: Color32 = Color32::from_rgb(0x17, 0x1a, 0x1e);
+const PANEL_BG: Color32 = Color32::from_rgb(0x1e, 0x22, 0x26);
+
+// Engraved dividers: a dark hairline beside a lighter hairline reads as an
+// incised groove in the metal.
+const DIV_DARK: Color32 = Color32::from_rgb(0x0c, 0x0e, 0x10);
+const DIV_LIGHT: Color32 = Color32::from_rgb(0x3a, 0x40, 0x46);
+
+// Text — white silkscreen.
+const HEADER_TEXT: Color32 = Color32::from_rgb(0xe8, 0xe8, 0xe6);
+const CREAM: Color32 = Color32::from_rgb(0xe0, 0xe0, 0xdc);
+const CREAM_DIM: Color32 = Color32::from_rgb(0x9a, 0x9c, 0x9a);
+
+const TROUGH: Color32 = Color32::from_rgb(0x14, 0x16, 0x18);
+
+// Amber "lit" accent — reserved for active / selected states.
+const ACCENT: Color32 = Color32::from_rgb(0xe8, 0xa0, 0x25);
 const ACCENT_DIM: Color32 = Color32::from_rgb(0xb3, 0x7a, 0x1a);
-const CREAM: Color32 = Color32::from_rgb(0xd4, 0xc9, 0xa8);
-const CREAM_DIM: Color32 = Color32::from_rgb(0x8a, 0x80, 0x68);
-const TROUGH: Color32 = Color32::from_rgb(0x2a, 0x2a, 0x2a);
-const HEADER_BG: Color32 = Color32::from_rgb(0x2c, 0x1e, 0x10);
-const WHITE_KEY: Color32 = Color32::from_rgb(0xe8, 0xe4, 0xd8);
-const BLACK_KEY: Color32 = Color32::from_rgb(0x1a, 0x1a, 0x1a);
+
+// Matte maroon-red paddle / bat toggle lever.
+const PADDLE_BODY: Color32 = Color32::from_rgb(0x7a, 0x26, 0x22);
+const PADDLE_HI: Color32 = Color32::from_rgb(0xa8, 0x3b, 0x34);
+const PADDLE_DARK: Color32 = Color32::from_rgb(0x3a, 0x12, 0x10);
+
+// Keyboard.
+const WHITE_KEY: Color32 = Color32::from_rgb(0xec, 0xe7, 0xd8);
+const BLACK_KEY: Color32 = Color32::from_rgb(0x14, 0x14, 0x14);
 
 // ── Enum <-> label tables ──────────────────────────────────────────────────
 const WAVEFORMS: [(Waveform, &str); 4] = [
     (Waveform::Sine, "SINE"),
     (Waveform::Saw, "SAW"),
-    (Waveform::Square, "SQUARE"),
-    (Waveform::Triangle, "TRIANGLE"),
+    (Waveform::Square, "SQR"),
+    (Waveform::Triangle, "TRI"),
 ];
 const NOISE_TYPES: [(NoiseType, &str); 2] =
     [(NoiseType::White, "WHITE"), (NoiseType::Pink, "PINK")];
 const LFO_DESTS: [(LfoDest, &str); 3] = [
-    (LfoDest::Filter, "FILTER"),
+    (LfoDest::Filter, "FILT"),
     (LfoDest::Pitch, "PITCH"),
     (LfoDest::Amp, "AMP"),
 ];
@@ -100,7 +129,90 @@ fn fmt_value(v: f32, f: KFmt) -> String {
     }
 }
 
-// ── Custom rotary knob widget ──────────────────────────────────────────────
+// ── Small painting helpers ─────────────────────────────────────────────────
+
+/// Fill `rect` with a 4-corner interpolated gradient.
+fn gradient_rect(
+    painter: &egui::Painter,
+    rect: Rect,
+    tl: Color32,
+    tr: Color32,
+    br: Color32,
+    bl: Color32,
+) {
+    let mut mesh = egui::Mesh::default();
+    mesh.colored_vertex(rect.left_top(), tl);
+    mesh.colored_vertex(rect.right_top(), tr);
+    mesh.colored_vertex(rect.right_bottom(), br);
+    mesh.colored_vertex(rect.left_bottom(), bl);
+    mesh.add_triangle(0, 1, 2);
+    mesh.add_triangle(0, 2, 3);
+    painter.add(mesh);
+}
+
+/// Vertical (top→bottom) gradient fill.
+fn vgrad(painter: &egui::Painter, rect: Rect, top: Color32, bot: Color32) {
+    gradient_rect(painter, rect, top, top, bot, bot);
+}
+
+/// Horizontal (left→right) gradient fill.
+fn hgrad(painter: &egui::Painter, rect: Rect, left: Color32, right: Color32) {
+    gradient_rect(painter, rect, left, right, right, left);
+}
+
+/// Letter-space a header string ("OSC" -> "O S C").
+fn spaced(s: &str) -> String {
+    s.chars()
+        .map(|c| c.to_string())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Paint an oak-wood side cheek: base fill, a soft rounded sheen and a handful
+/// of darker vertical grain streaks.
+fn paint_wood(painter: &egui::Painter, rect: Rect, tex: Option<&egui::TextureHandle>) {
+    if let Some(tex) = tex {
+        // Real oak photo: sample a vertical slice so the grain reads as vertical
+        // on the tall, narrow cheek instead of being smeared horizontally.
+        let uv = Rect::from_min_max(pos2(0.36, 0.02), pos2(0.60, 0.98));
+        painter.image(tex.id(), rect, uv, Color32::WHITE);
+        // Slight recess darkening for the cylindrical, framed feel.
+        painter.rect_filled(rect, 0.0, Color32::from_rgba_unmultiplied(18, 10, 3, 46));
+    } else {
+        painter.rect_filled(rect, 0.0, WOOD);
+        // Rounded cylindrical sheen across the width (dark edges, lit centre).
+        let mid = rect.center().x;
+        let lh = Rect::from_min_max(rect.left_top(), pos2(mid, rect.bottom()));
+        let rh = Rect::from_min_max(pos2(mid, rect.top()), rect.right_bottom());
+        hgrad(painter, lh, WOOD_LO, WOOD_HI);
+        hgrad(painter, rh, WOOD_HI, WOOD_LO);
+        // Vertical grain streaks.
+        let w = rect.width();
+        let streaks = [0.18f32, 0.34, 0.5, 0.63, 0.78, 0.9];
+        for (k, t) in streaks.iter().enumerate() {
+            let x = rect.left() + w * t;
+            let col = if k % 2 == 0 { WOOD_LO } else { WOOD_HI };
+            painter.line_segment(
+                [
+                    pos2(x, rect.top() + 2.0),
+                    pos2(x + 0.6, rect.bottom() - 2.0),
+                ],
+                Stroke::new(1.0, col),
+            );
+        }
+    }
+    // Inner shadow at both edges.
+    painter.line_segment(
+        [rect.left_top(), rect.left_bottom()],
+        Stroke::new(2.0, Color32::from_rgba_unmultiplied(0, 0, 0, 90)),
+    );
+    painter.line_segment(
+        [rect.right_top(), rect.right_bottom()],
+        Stroke::new(2.0, Color32::from_rgba_unmultiplied(0, 0, 0, 90)),
+    );
+}
+
+// ── Rotary knob widget (the centerpiece) ───────────────────────────────────
 
 const KNOB_ARC_START: f32 = 2.356_194_5; // 135° (7 o'clock), screen coords (y down)
 const KNOB_ARC_SWEEP: f32 = 4.712_389; // 270° clockwise
@@ -123,7 +235,10 @@ fn value_to_ratio(v: f32, min: f32, max: f32, log: bool) -> f32 {
     r.clamp(0.0, 1.0)
 }
 
-/// Draw a rotary knob. Returns `true` when the value changed this frame.
+/// Draw a Minimoog-style rotary knob: a fluted black skirt, a prominent bright
+/// brushed-aluminium domed cap, a crisp white pointer, and a faint silkscreened
+/// arc scale (ticks + 0/10 numbering) printed on the panel around it. Returns
+/// `true` when the value changed this frame.
 #[allow(clippy::too_many_arguments)]
 fn knob(
     ui: &mut Ui,
@@ -135,12 +250,12 @@ fn knob(
     default: f32,
     fmt: KFmt,
 ) -> bool {
-    let (resp, painter) = ui.allocate_painter(vec2(62.0, 74.0), Sense::click_and_drag());
+    let (resp, painter) = ui.allocate_painter(vec2(56.0, 86.0), Sense::click_and_drag());
     let rect = resp.rect;
     let cx = rect.center().x;
     let top = rect.top();
-    let r_track = 22.0_f32;
-    let center = pos2(cx, top + 14.0 + r_track);
+    let r_skirt = 19.0_f32;
+    let center = pos2(cx, top + 15.0 + r_skirt);
 
     let mut changed = false;
     let mut ratio = value_to_ratio(*value, min, max, log);
@@ -165,50 +280,135 @@ fn knob(
         changed = true;
     }
 
-    // Label
+    // Label above.
     painter.text(
         pos2(cx, top + 6.0),
         Align2::CENTER_CENTER,
         label,
         FontId::proportional(9.0),
-        CREAM_DIM,
+        HEADER_TEXT,
     );
 
-    // Track arc (dim, full sweep)
-    let arc = |t0: f32, t1: f32| -> Vec<Pos2> {
-        let n = ((t1 - t0).abs() * 28.0).ceil().max(2.0) as usize;
-        (0..=n)
-            .map(|k| {
-                let t = t0 + (t1 - t0) * (k as f32 / n as f32);
-                let a = KNOB_ARC_START + t * KNOB_ARC_SWEEP;
-                pos2(center.x + r_track * a.cos(), center.y + r_track * a.sin())
-            })
-            .collect()
-    };
-    painter.add(egui::Shape::line(arc(0.0, 1.0), Stroke::new(3.0, TROUGH)));
-    if ratio > 0.004 {
-        painter.add(egui::Shape::line(arc(0.0, ratio), Stroke::new(3.0, ACCENT)));
+    // (0) Silkscreened arc scale printed on the panel (outside the skirt):
+    // faint tick marks around the 270° sweep with 0 / 10 numbering.
+    let r_scale = 23.0;
+    let scale_ticks = 11;
+    for k in 0..scale_ticks {
+        let t = k as f32 / (scale_ticks - 1) as f32;
+        let a = KNOB_ARC_START + t * KNOB_ARC_SWEEP;
+        let (c, s) = (a.cos(), a.sin());
+        let long = k == 0 || k == scale_ticks - 1 || k == (scale_ticks - 1) / 2;
+        let r0 = if long { r_scale - 2.5 } else { r_scale - 1.5 };
+        painter.line_segment(
+            [
+                pos2(center.x + r0 * c, center.y + r0 * s),
+                pos2(
+                    center.x + (r_scale + 0.5) * c,
+                    center.y + (r_scale + 0.5) * s,
+                ),
+            ],
+            Stroke::new(1.0, Color32::from_rgb(0x6a, 0x6c, 0x6a)),
+        );
+    }
+    let num_r = r_scale + 4.0;
+    for (k, txt) in [(0usize, "0"), (scale_ticks - 1, "10")] {
+        let t = k as f32 / (scale_ticks - 1) as f32;
+        let a = KNOB_ARC_START + t * KNOB_ARC_SWEEP;
+        painter.text(
+            pos2(center.x + num_r * a.cos(), center.y + num_r * a.sin()),
+            Align2::CENTER_CENTER,
+            txt,
+            FontId::proportional(7.0),
+            Color32::from_rgb(0x7a, 0x7c, 0x7a),
+        );
     }
 
-    // Knob body
-    let r_body = 15.0;
-    painter.circle_filled(center, r_body, Color32::from_rgb(0x2c, 0x2c, 0x2c));
+    // (1) Fluted / scalloped black skirt: radial ridges alternating between a
+    // faint highlight and shadow so it reads as a gripped edge.
+    painter.circle_filled(center, r_skirt, Color32::from_rgb(0x0a, 0x0a, 0x0b));
+    let flutes = 22;
+    for k in 0..flutes {
+        let a = k as f32 / flutes as f32 * std::f32::consts::TAU;
+        let (c, s) = (a.cos(), a.sin());
+        let col = if k % 2 == 0 {
+            Color32::from_rgb(0x38, 0x38, 0x3a)
+        } else {
+            Color32::from_rgb(0x08, 0x08, 0x09)
+        };
+        painter.line_segment(
+            [
+                pos2(center.x + 13.5 * c, center.y + 13.5 * s),
+                pos2(
+                    center.x + (r_skirt - 0.5) * c,
+                    center.y + (r_skirt - 0.5) * s,
+                ),
+            ],
+            Stroke::new(1.6, col),
+        );
+    }
+    painter.circle_stroke(center, r_skirt, Stroke::new(1.0, Color32::BLACK));
+
+    // (2) Black body ring beneath the cap.
+    painter.circle_filled(center, 13.5, Color32::from_rgb(0x16, 0x16, 0x18));
+
+    // (3) Prominent bright brushed-aluminium domed cap: concentric fills from a
+    // bright centre out to a darker rim, plus faint radial brush streaks and a
+    // hot highlight so the dome reads as the centrepiece.
+    let r_cap = 12.5_f32;
+    let caps: [(f32, Color32); 5] = [
+        (r_cap, Color32::from_rgb(0x84, 0x86, 0x88)),
+        (10.5, Color32::from_rgb(0xa8, 0xaa, 0xac)),
+        (8.0, Color32::from_rgb(0xc8, 0xca, 0xcc)),
+        (5.0, Color32::from_rgb(0xe4, 0xe6, 0xe8)),
+        (2.2, Color32::from_rgb(0xf4, 0xf5, 0xf6)),
+    ];
+    for (r, c) in caps {
+        painter.circle_filled(center, r, c);
+    }
+    // Radial brushed streaks.
+    for k in 0..28 {
+        let a = k as f32 / 28.0 * std::f32::consts::TAU;
+        let (c, s) = (a.cos(), a.sin());
+        let shade = if k % 2 == 0 {
+            Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, 26)
+        } else {
+            Color32::from_rgba_unmultiplied(0x00, 0x00, 0x00, 20)
+        };
+        painter.line_segment(
+            [
+                pos2(center.x + 2.0 * c, center.y + 2.0 * s),
+                pos2(center.x + (r_cap - 0.6) * c, center.y + (r_cap - 0.6) * s),
+            ],
+            Stroke::new(0.8, shade),
+        );
+    }
+    painter.circle_filled(
+        pos2(center.x - 3.2, center.y - 3.8),
+        3.0,
+        Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, 120),
+    );
     painter.circle_stroke(
         center,
-        r_body,
-        Stroke::new(1.5, Color32::from_rgb(0x44, 0x44, 0x44)),
+        r_cap,
+        Stroke::new(1.0, Color32::from_rgb(0x2a, 0x2a, 0x2c)),
     );
-    painter.circle_filled(center, 2.0, Color32::from_rgb(0x40, 0x40, 0x40));
 
-    // Pointer
+    // (4) White pointer from cap centre to the skirt edge, rotating with value.
     let a = KNOB_ARC_START + ratio * KNOB_ARC_SWEEP;
-    let p_in = pos2(center.x + 5.0 * a.cos(), center.y + 5.0 * a.sin());
-    let p_out = pos2(center.x + 13.5 * a.cos(), center.y + 13.5 * a.sin());
-    painter.line_segment([p_in, p_out], Stroke::new(2.5, ACCENT));
+    let (c, s) = (a.cos(), a.sin());
+    let p_in = pos2(center.x + 3.0 * c, center.y + 3.0 * s);
+    let p_out = pos2(
+        center.x + (r_skirt - 1.5) * c,
+        center.y + (r_skirt - 1.5) * s,
+    );
+    painter.line_segment(
+        [p_in, p_out],
+        Stroke::new(2.2, Color32::from_rgb(0xf6, 0xf6, 0xf2)),
+    );
 
-    // Value text
+    // (5) Value below.
     painter.text(
-        pos2(cx, center.y + r_track + 9.0),
+        pos2(cx, center.y + r_skirt + 9.0),
         Align2::CENTER_CENTER,
         fmt_value(*value, fmt),
         FontId::proportional(9.5),
@@ -218,40 +418,275 @@ fn knob(
     changed
 }
 
-/// A labelled combo box over an enum. Returns `true` when the choice changed.
-fn combo<T: PartialEq + Copy>(ui: &mut Ui, id: &str, cur: &mut T, opts: &[(T, &str)]) -> bool {
-    let sel = opts
-        .iter()
-        .find(|(v, _)| *v == *cur)
-        .map(|(_, n)| *n)
-        .unwrap_or("");
+// ── Red paddle / bat toggle switch ─────────────────────────────────────────
+
+/// A matte-red 3D paddle (bat) toggle lever. The lever tilts to one side for
+/// OFF and the other for ON, casts a soft drop shadow, and has tiny white
+/// "OFF"/"ON" silkscreen labels beside it. Returns `true` when toggled.
+fn rocker(ui: &mut Ui, label: &str, on: &mut bool) -> bool {
+    let (resp, painter) = ui.allocate_painter(vec2(56.0, 44.0), Sense::click());
+    let rect = resp.rect;
+
     let mut changed = false;
-    egui::ComboBox::from_id_salt(id)
-        .selected_text(sel)
-        .width(96.0)
-        .show_ui(ui, |ui| {
-            for (v, n) in opts {
-                if ui.selectable_value(cur, *v, *n).changed() {
-                    changed = true;
-                }
-            }
-        });
+    if resp.clicked() {
+        *on = !*on;
+        changed = true;
+    }
+
+    // Recessed mounting plate.
+    let plate = Rect::from_center_size(pos2(rect.center().x, rect.top() + 17.0), vec2(30.0, 28.0));
+    painter.rect_filled(plate, 3.0, Color32::from_rgb(0x0a, 0x0b, 0x0c));
+    painter.rect_stroke(plate, 3.0, Stroke::new(1.0, Color32::BLACK));
+
+    // Tiny OFF / ON silkscreen labels, the active side lit white.
+    painter.text(
+        pos2(plate.left() - 2.0, plate.top() + 4.0),
+        Align2::RIGHT_CENTER,
+        "OFF",
+        FontId::proportional(7.0),
+        if *on { CREAM_DIM } else { HEADER_TEXT },
+    );
+    painter.text(
+        pos2(plate.right() + 2.0, plate.top() + 4.0),
+        Align2::LEFT_CENTER,
+        "ON",
+        FontId::proportional(7.0),
+        if *on { HEADER_TEXT } else { CREAM_DIM },
+    );
+
+    // Lever geometry: a rounded bat pivoting near the plate bottom, tilting
+    // ~20° toward ON (right) or OFF (left).
+    let pivot = pos2(plate.center().x, plate.bottom() - 5.0);
+    let ang: f32 = if *on { 0.36 } else { -0.36 };
+    let (s, c) = ang.sin_cos();
+    let up = vec2(s, -c); // (0,-1) rotated by ang
+    let perp = vec2(c, s);
+    let len = 19.0;
+    let half_w = 4.5;
+    let tip = pivot + up * len;
+    let base_l = pivot + perp * half_w;
+    let base_r = pivot - perp * half_w;
+    let tip_l = tip + perp * half_w;
+    let tip_r = tip - perp * half_w;
+
+    // Soft drop shadow.
+    let off = vec2(2.2, 3.0);
+    painter.add(egui::Shape::convex_polygon(
+        vec![base_l + off, tip_l + off, tip_r + off, base_r + off],
+        Color32::from_rgba_unmultiplied(0, 0, 0, 90),
+        Stroke::NONE,
+    ));
+    painter.circle_filled(
+        tip + off,
+        half_w,
+        Color32::from_rgba_unmultiplied(0, 0, 0, 90),
+    );
+
+    // Lever body (matte maroon) + rounded tip.
+    painter.add(egui::Shape::convex_polygon(
+        vec![base_l, tip_l, tip_r, base_r],
+        PADDLE_BODY,
+        Stroke::new(1.0, PADDLE_DARK),
+    ));
+    painter.circle_filled(tip, half_w, PADDLE_BODY);
+    painter.circle_stroke(tip, half_w, Stroke::new(1.0, PADDLE_DARK));
+
+    // Highlight edge along the lit face + a small specular dot on the tip.
+    painter.line_segment([base_l, tip_l], Stroke::new(1.5, PADDLE_HI));
+    painter.circle_filled(tip - up * 1.2 - perp * 1.4, 1.5, PADDLE_HI);
+
+    // Switch name below the plate.
+    painter.text(
+        pos2(rect.center().x, rect.bottom() - 5.0),
+        Align2::CENTER_CENTER,
+        label,
+        FontId::proportional(8.0),
+        CREAM_DIM,
+    );
+
     changed
 }
 
-/// A framed panel with an amber header title.
+// ── Segmented metal switch strip (enum selector) ───────────────────────────
+
+/// A compact metal segmented switch: one small labelled cell per option, the
+/// active cell lit amber. Returns `true` when the choice changed.
+fn segmented<T: PartialEq + Copy>(ui: &mut Ui, cur: &mut T, opts: &[(T, &str)]) -> bool {
+    let w = ui.available_width().min(210.0);
+    let h = 20.0;
+    let (resp, painter) = ui.allocate_painter(vec2(w, h), Sense::click());
+    let rect = resp.rect;
+    let n = opts.len().max(1);
+    let cw = rect.width() / n as f32;
+    let click = if resp.clicked() {
+        resp.interact_pointer_pos()
+    } else {
+        None
+    };
+
+    let mut changed = false;
+    for (i, (v, name)) in opts.iter().enumerate() {
+        let x0 = rect.left() + i as f32 * cw;
+        let cell = Rect::from_min_size(pos2(x0, rect.top()), vec2(cw, h));
+        let active = *v == *cur;
+        let inner = cell.shrink(1.0);
+        if active {
+            vgrad(
+                &painter,
+                inner,
+                Color32::from_rgb(0x5c, 0x50, 0x2c),
+                Color32::from_rgb(0x3a, 0x31, 0x1a),
+            );
+            painter.line_segment(
+                [
+                    pos2(inner.left() + 2.0, inner.top() + 1.5),
+                    pos2(inner.right() - 2.0, inner.top() + 1.5),
+                ],
+                Stroke::new(1.0, Color32::from_rgba_unmultiplied(0xff, 0xd0, 0x60, 120)),
+            );
+        } else {
+            vgrad(&painter, inner, PANEL_TOP, PANEL_BOT);
+        }
+        painter.rect_stroke(cell.shrink(0.5), 2.0, Stroke::new(1.0, DIV_DARK));
+        painter.text(
+            cell.center(),
+            Align2::CENTER_CENTER,
+            name,
+            FontId::proportional(9.0),
+            if active { ACCENT } else { CREAM_DIM },
+        );
+        if let Some(p) = click {
+            if cell.contains(p) && !active {
+                *cur = *v;
+                changed = true;
+            }
+        }
+    }
+    changed
+}
+
+// ── Pitch / mod wheel ──────────────────────────────────────────────────────
+
+/// A tall vertical performance wheel (0..1) with ridge lines and a position
+/// indicator. Returns `true` while being dragged.
+fn draw_wheel(ui: &mut Ui, label: &str, value: &mut f32, centered: bool) -> bool {
+    let (resp, painter) = ui.allocate_painter(vec2(34.0, 122.0), Sense::click_and_drag());
+    let rect = resp.rect;
+    let body = Rect::from_min_max(
+        pos2(rect.left() + 5.0, rect.top() + 2.0),
+        pos2(rect.right() - 5.0, rect.bottom() - 15.0),
+    );
+
+    // Recessed slot.
+    painter.rect_filled(rect, 4.0, Color32::from_rgb(0x08, 0x08, 0x09));
+
+    // Cylindrical shading (dark edges, lit centre).
+    let mid = body.center().x;
+    let lh = Rect::from_min_max(body.left_top(), pos2(mid, body.bottom()));
+    let rh = Rect::from_min_max(pos2(mid, body.top()), body.right_bottom());
+    hgrad(
+        &painter,
+        lh,
+        Color32::from_rgb(0x1c, 0x1c, 0x1e),
+        Color32::from_rgb(0x4a, 0x4a, 0x4e),
+    );
+    hgrad(
+        &painter,
+        rh,
+        Color32::from_rgb(0x4a, 0x4a, 0x4e),
+        Color32::from_rgb(0x1c, 0x1c, 0x1e),
+    );
+
+    // Horizontal ridge lines.
+    let n = 9;
+    for i in 1..n {
+        let y = body.top() + body.height() * i as f32 / n as f32;
+        painter.line_segment(
+            [pos2(body.left() + 1.0, y), pos2(body.right() - 1.0, y)],
+            Stroke::new(1.0, Color32::from_rgba_unmultiplied(0, 0, 0, 110)),
+        );
+    }
+
+    // Position indicator.
+    let vv = (*value).clamp(0.0, 1.0);
+    let iy = body.bottom() - vv * body.height();
+    painter.rect_filled(
+        Rect::from_min_max(pos2(body.left(), iy - 1.5), pos2(body.right(), iy + 1.5)),
+        0.0,
+        ACCENT,
+    );
+    painter.rect_stroke(body, 5.0, Stroke::new(1.0, Color32::BLACK));
+
+    painter.text(
+        pos2(rect.center().x, rect.bottom() - 7.0),
+        Align2::CENTER_CENTER,
+        label,
+        FontId::proportional(9.0),
+        CREAM_DIM,
+    );
+
+    let mut changed = false;
+    if resp.dragged() {
+        let dy = resp.drag_delta().y;
+        *value = ((*value) - dy / body.height()).clamp(0.0, 1.0);
+        changed = true;
+    }
+    if resp.double_clicked() {
+        *value = if centered { 0.5 } else { 0.0 };
+        changed = true;
+    }
+    changed
+}
+
+// ── Section panel ──────────────────────────────────────────────────────────
+
+/// A Minimoog "section": a white letter-spaced centered header with an engraved
+/// underline, thin engraved vertical dividers on both edges, sitting on the
+/// shared brushed-metal sheet.
 fn panel(ui: &mut Ui, title: &str, add: impl FnOnce(&mut Ui)) {
-    egui::Frame::none()
-        .fill(PANEL_BG)
-        .rounding(6.0)
-        .stroke(Stroke::new(1.0, BORDER))
-        .inner_margin(8.0)
+    let inner = egui::Frame::none()
+        .inner_margin(egui::Margin::symmetric(9.0, 6.0))
         .show(ui, |ui| {
             ui.set_width(ui.available_width());
-            ui.label(RichText::new(title).color(ACCENT).size(11.0).strong());
-            ui.add_space(5.0);
+            ui.vertical_centered(|ui| {
+                ui.label(
+                    RichText::new(spaced(title))
+                        .color(HEADER_TEXT)
+                        .size(11.0)
+                        .strong(),
+                );
+            });
+            ui.add_space(1.0);
+            // Engraved underline (dark + light hairline).
+            let w = ui.available_width();
+            let (r, p) = ui.allocate_painter(vec2(w, 3.0), Sense::hover());
+            let y = r.rect.center().y;
+            let (l, rt) = (r.rect.left() + 4.0, r.rect.right() - 4.0);
+            p.line_segment([pos2(l, y), pos2(rt, y)], Stroke::new(1.0, DIV_DARK));
+            p.line_segment(
+                [pos2(l, y + 1.0), pos2(rt, y + 1.0)],
+                Stroke::new(1.0, DIV_LIGHT),
+            );
+            ui.add_space(4.0);
             add(ui);
         });
+
+    // Engraved vertical dividers on the section edges.
+    let rect = inner.response.rect;
+    let p = ui.painter();
+    for x in [rect.left() + 1.0, rect.right() - 1.0] {
+        p.line_segment(
+            [pos2(x, rect.top() + 2.0), pos2(x, rect.bottom() - 2.0)],
+            Stroke::new(1.0, DIV_DARK),
+        );
+        p.line_segment(
+            [
+                pos2(x + 1.0, rect.top() + 2.0),
+                pos2(x + 1.0, rect.bottom() - 2.0),
+            ],
+            Stroke::new(1.0, DIV_LIGHT),
+        );
+    }
 }
 
 fn note_at(p: Pos2, blacks: &[(Rect, i32)], whites: &[(Rect, i32)]) -> Option<i32> {
@@ -280,6 +715,11 @@ struct App {
     // f32 shadows for the integer osc params so knob dragging stays smooth.
     osc_oct: [f32; 3],
     osc_semi: [f32; 3],
+    // Remembered levels so the mixer ON/OFF rockers can restore them.
+    osc_prev_level: [f32; 3],
+    noise_prev_level: f32,
+    // Spring-centered pitch wheel (visual only).
+    pitch_wheel: f32,
     // virtual keyboard state
     kbd_octave: i32,
     active_notes: HashSet<i32>,
@@ -288,6 +728,17 @@ struct App {
     // meters
     vu_db: f32,
     peak_db: f32,
+    // real oak-wood photo texture for the side cheeks (None = procedural fallback)
+    wood_tex: Option<egui::TextureHandle>,
+}
+
+/// Decode the embedded oak-wood photo into a GPU texture (once).
+fn load_wood(ctx: &Context) -> Option<egui::TextureHandle> {
+    let bytes = include_bytes!("../assets/wood.jpg");
+    let img = image::load_from_memory(bytes).ok()?.to_rgba8();
+    let (w, h) = img.dimensions();
+    let color = egui::ColorImage::from_rgba_unmultiplied([w as usize, h as usize], img.as_raw());
+    Some(ctx.load_texture("oak-wood", color, egui::TextureOptions::LINEAR))
 }
 
 impl App {
@@ -298,6 +749,7 @@ impl App {
         presets: Vec<Patch>,
     ) -> Self {
         Self::install_theme(&cc.egui_ctx);
+        let wood_tex = load_wood(&cc.egui_ctx);
         let patch = Patch::default();
         let mut app = Self {
             tx,
@@ -308,12 +760,16 @@ impl App {
             preset_idx: None,
             osc_oct: [0.0; 3],
             osc_semi: [0.0; 3],
+            osc_prev_level: [1.0; 3],
+            noise_prev_level: 0.5,
+            pitch_wheel: 0.5,
             kbd_octave: 4,
             active_notes: HashSet::new(),
             pc_notes: HashMap::new(),
             mouse_note: None,
             vu_db: -60.0,
             peak_db: -60.0,
+            wood_tex,
         };
         app.sync_shadows();
         app
@@ -327,9 +783,9 @@ impl App {
         v.faint_bg_color = PANEL_BG;
         v.extreme_bg_color = TROUGH;
         v.widgets.noninteractive.bg_fill = PANEL_BG;
-        v.widgets.inactive.bg_fill = Color32::from_rgb(0x33, 0x33, 0x33);
-        v.widgets.inactive.weak_bg_fill = Color32::from_rgb(0x33, 0x33, 0x33);
-        v.widgets.hovered.bg_fill = Color32::from_rgb(0x45, 0x45, 0x45);
+        v.widgets.inactive.bg_fill = Color32::from_rgb(0x33, 0x36, 0x38);
+        v.widgets.inactive.weak_bg_fill = Color32::from_rgb(0x33, 0x36, 0x38);
+        v.widgets.hovered.bg_fill = Color32::from_rgb(0x4a, 0x4e, 0x50);
         v.widgets.active.bg_fill = ACCENT_DIM;
         v.selection.bg_fill = ACCENT_DIM;
         v.selection.stroke = Stroke::new(1.0, ACCENT);
@@ -399,6 +855,12 @@ impl App {
         for (k, o) in self.patch.oscillators.iter().enumerate().take(3) {
             self.osc_oct[k] = o.octave as f32;
             self.osc_semi[k] = o.semitone as f32;
+            if o.level > 0.001 {
+                self.osc_prev_level[k] = o.level;
+            }
+        }
+        if self.patch.noise.level > 0.001 {
+            self.noise_prev_level = self.patch.noise.level;
         }
     }
 
@@ -451,14 +913,14 @@ impl App {
             ui.add_space(4.0);
             ui.label(
                 RichText::new("RUSTED MOOG")
-                    .color(ACCENT)
+                    .color(HEADER_TEXT)
                     .size(24.0)
                     .strong(),
             );
             ui.add_space(10.0);
             ui.label(
-                RichText::new("VIRTUAL ANALOG SYNTHESIZER")
-                    .color(CREAM_DIM)
+                RichText::new("MODEL D  •  VIRTUAL ANALOG SYNTHESIZER")
+                    .color(ACCENT)
                     .size(10.0),
             );
         });
@@ -505,7 +967,7 @@ impl App {
                 .fill(if active {
                     ACCENT
                 } else {
-                    Color32::from_rgb(0x3a, 0x3a, 0x3a)
+                    Color32::from_rgb(0x33, 0x36, 0x38)
                 })
                 .min_size(vec2(30.0, 24.0));
                 if ui.add(btn).clicked() {
@@ -516,6 +978,19 @@ impl App {
     }
 
     fn body(&mut self, ui: &mut Ui) {
+        // Matte anodized sheet behind every section, with faint vertical brush.
+        let sheet = ui.max_rect();
+        let painter = ui.painter();
+        vgrad(painter, sheet, PANEL_TOP, PANEL_BOT);
+        let mut x = sheet.left() + 7.0;
+        while x < sheet.right() {
+            painter.line_segment(
+                [pos2(x, sheet.top()), pos2(x, sheet.bottom())],
+                Stroke::new(1.0, Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, 5)),
+            );
+            x += 13.0;
+        }
+
         // Row 1: three oscillators + noise.
         ui.columns(4, |c| {
             self.osc_panel(&mut c[0], 0);
@@ -541,18 +1016,17 @@ impl App {
 
     fn osc_panel(&mut self, ui: &mut Ui, i: usize) {
         panel(ui, &format!("OSCILLATOR {}", i + 1), |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("WAVE").color(CREAM_DIM).size(9.0));
-                let mut wf = self.patch.oscillators[i].waveform;
-                if combo(ui, &format!("osc_wf_{i}"), &mut wf, &WAVEFORMS) {
-                    self.patch.oscillators[i].waveform = wf;
-                    self.send(Event::SetOscWaveform {
-                        channel: self.channel,
-                        osc: i,
-                        waveform: wf,
-                    });
-                }
-            });
+            ui.label(RichText::new("WAVEFORM").color(CREAM_DIM).size(8.0));
+            let mut wf = self.patch.oscillators[i].waveform;
+            if segmented(ui, &mut wf, &WAVEFORMS) {
+                self.patch.oscillators[i].waveform = wf;
+                self.send(Event::SetOscWaveform {
+                    channel: self.channel,
+                    osc: i,
+                    waveform: wf,
+                });
+            }
+            ui.add_space(3.0);
             ui.horizontal(|ui| {
                 let mut oct = self.osc_oct[i];
                 if knob(ui, "OCT", &mut oct, -2.0, 2.0, false, 0.0, KFmt::Int) {
@@ -570,31 +1044,66 @@ impl App {
                 }
                 let mut lvl = self.patch.oscillators[i].level;
                 if knob(ui, "LEVEL", &mut lvl, 0.0, 1.0, false, 1.0, KFmt::Percent) {
+                    if lvl > 0.001 {
+                        self.osc_prev_level[i] = lvl;
+                    }
                     self.set_param(ParamId::OscLevel(i), lvl);
                 }
             });
+            // Mixer enable paddle (routes this source into the mixer).
+            let mut on = self.patch.oscillators[i].level > 0.001;
+            if rocker(ui, "MIX", &mut on) {
+                let value = if on {
+                    let prev = self.osc_prev_level[i];
+                    if prev > 0.001 {
+                        prev
+                    } else {
+                        1.0
+                    }
+                } else {
+                    self.osc_prev_level[i] = self.patch.oscillators[i].level;
+                    0.0
+                };
+                self.set_param(ParamId::OscLevel(i), value);
+            }
         });
     }
 
     fn noise_panel(&mut self, ui: &mut Ui) {
         panel(ui, "NOISE", |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("TYPE").color(CREAM_DIM).size(9.0));
-                let mut nt = self.patch.noise.noise_type;
-                if combo(ui, "noise_type", &mut nt, &NOISE_TYPES) {
-                    self.patch.noise.noise_type = nt;
-                    self.send(Event::SetNoiseType {
-                        channel: self.channel,
-                        noise_type: nt,
-                    });
-                }
-            });
+            ui.label(RichText::new("TYPE").color(CREAM_DIM).size(8.0));
+            let mut nt = self.patch.noise.noise_type;
+            if segmented(ui, &mut nt, &NOISE_TYPES) {
+                self.patch.noise.noise_type = nt;
+                self.send(Event::SetNoiseType {
+                    channel: self.channel,
+                    noise_type: nt,
+                });
+            }
+            ui.add_space(3.0);
             ui.horizontal(|ui| {
                 let mut lvl = self.patch.noise.level;
                 if knob(ui, "LEVEL", &mut lvl, 0.0, 1.0, false, 0.0, KFmt::Percent) {
+                    if lvl > 0.001 {
+                        self.noise_prev_level = lvl;
+                    }
                     self.set_param(ParamId::NoiseLevel, lvl);
                 }
             });
+            let mut on = self.patch.noise.level > 0.001;
+            if rocker(ui, "MIX", &mut on) {
+                let value = if on {
+                    if self.noise_prev_level > 0.001 {
+                        self.noise_prev_level
+                    } else {
+                        0.5
+                    }
+                } else {
+                    self.noise_prev_level = self.patch.noise.level;
+                    0.0
+                };
+                self.set_param(ParamId::NoiseLevel, value);
+            }
         });
     }
 
@@ -676,28 +1185,26 @@ impl App {
 
     fn lfo_panel(&mut self, ui: &mut Ui) {
         panel(ui, "LFO", |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("WAVE").color(CREAM_DIM).size(9.0));
-                let mut wf = self.patch.lfo.waveform;
-                if combo(ui, "lfo_wf", &mut wf, &WAVEFORMS) {
-                    self.patch.lfo.waveform = wf;
-                    self.send(Event::SetLfoWaveform {
-                        channel: self.channel,
-                        waveform: wf,
-                    });
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.label(RichText::new("DEST").color(CREAM_DIM).size(9.0));
-                let mut d = self.patch.lfo.destination;
-                if combo(ui, "lfo_dest", &mut d, &LFO_DESTS) {
-                    self.patch.lfo.destination = d;
-                    self.send(Event::SetLfoDest {
-                        channel: self.channel,
-                        dest: d,
-                    });
-                }
-            });
+            ui.label(RichText::new("WAVEFORM").color(CREAM_DIM).size(8.0));
+            let mut wf = self.patch.lfo.waveform;
+            if segmented(ui, &mut wf, &WAVEFORMS) {
+                self.patch.lfo.waveform = wf;
+                self.send(Event::SetLfoWaveform {
+                    channel: self.channel,
+                    waveform: wf,
+                });
+            }
+            ui.add_space(2.0);
+            ui.label(RichText::new("DESTINATION").color(CREAM_DIM).size(8.0));
+            let mut d = self.patch.lfo.destination;
+            if segmented(ui, &mut d, &LFO_DESTS) {
+                self.patch.lfo.destination = d;
+                self.send(Event::SetLfoDest {
+                    channel: self.channel,
+                    dest: d,
+                });
+            }
+            ui.add_space(3.0);
             ui.horizontal(|ui| {
                 let mut rate = self.patch.lfo.rate;
                 if knob(ui, "RATE", &mut rate, 0.1, 20.0, true, 1.0, KFmt::Rate) {
@@ -713,16 +1220,17 @@ impl App {
 
     fn glide_panel(&mut self, ui: &mut Ui) {
         panel(ui, "GLIDE", |ui| {
+            ui.label(RichText::new("MODE").color(CREAM_DIM).size(8.0));
+            let mut m = self.patch.glide.mode;
+            if segmented(ui, &mut m, &GLIDE_MODES) {
+                self.patch.glide.mode = m;
+                self.send(Event::SetGlideMode {
+                    channel: self.channel,
+                    mode: m,
+                });
+            }
+            ui.add_space(3.0);
             ui.horizontal(|ui| {
-                ui.label(RichText::new("MODE").color(CREAM_DIM).size(9.0));
-                let mut m = self.patch.glide.mode;
-                if combo(ui, "glide_mode", &mut m, &GLIDE_MODES) {
-                    self.patch.glide.mode = m;
-                    self.send(Event::SetGlideMode {
-                        channel: self.channel,
-                        mode: m,
-                    });
-                }
                 let mut t = self.patch.glide.time;
                 if knob(ui, "TIME", &mut t, 0.0, 1.0, false, 0.0, KFmt::Time) {
                     self.set_param(ParamId::GlideTime, t);
@@ -758,7 +1266,8 @@ impl App {
     fn draw_vu(&mut self, ui: &mut Ui) {
         let (resp, painter) = ui.allocate_painter(vec2(26.0, 92.0), Sense::hover());
         let rect = resp.rect;
-        painter.rect_filled(rect, 3.0, Color32::from_rgb(0x12, 0x12, 0x12));
+        painter.rect_filled(rect, 3.0, Color32::from_rgb(0x10, 0x10, 0x11));
+        painter.rect_stroke(rect, 3.0, Stroke::new(1.0, Color32::BLACK));
         let h = rect.height();
         let bx1 = rect.left() + 4.0;
         let bx2 = rect.right() - 4.0;
@@ -814,8 +1323,43 @@ impl App {
         });
         ui.add_space(4.0);
 
+        ui.horizontal(|ui| {
+            self.wheels(ui);
+            ui.add_space(10.0);
+            self.draw_keys(ui);
+        });
+    }
+
+    /// Pitch + mod wheels on a black sub-panel to the left of the keys.
+    fn wheels(&mut self, ui: &mut Ui) {
+        egui::Frame::none()
+            .fill(Color32::from_rgb(0x0b, 0x0b, 0x0c))
+            .rounding(4.0)
+            .inner_margin(6.0)
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    // Spring-centered pitch wheel (visual only — sends nothing).
+                    let mut p = self.pitch_wheel;
+                    let dragging = draw_wheel(ui, "PITCH", &mut p, true);
+                    self.pitch_wheel = if dragging {
+                        p
+                    } else {
+                        // Ease back toward center when released.
+                        self.pitch_wheel + (0.5 - self.pitch_wheel) * 0.25
+                    };
+                    ui.add_space(2.0);
+                    // Mod wheel drives LFO depth on the selected channel.
+                    let mut m = self.patch.lfo.depth;
+                    if draw_wheel(ui, "MOD", &mut m, false) {
+                        self.set_param(ParamId::LfoDepth, m);
+                    }
+                });
+            });
+    }
+
+    fn draw_keys(&mut self, ui: &mut Ui) {
         let avail_w = ui.available_width();
-        let (resp, painter) = ui.allocate_painter(vec2(avail_w, 120.0), Sense::click_and_drag());
+        let (resp, painter) = ui.allocate_painter(vec2(avail_w, 130.0), Sense::click_and_drag());
         let rect = resp.rect;
 
         let num_oct = 3;
@@ -863,41 +1407,63 @@ impl App {
             }
         }
 
-        // Draw white keys
+        // Draw white keys — cream with a soft bottom shadow.
         let names = ["C", "", "D", "", "E", "F", "", "G", "", "A", "", "B"];
         for (r, note) in &white_notes {
             let on = self.active_notes.contains(note);
-            let col = if on { ACCENT } else { WHITE_KEY };
+            let body = if on { ACCENT } else { WHITE_KEY };
             painter.rect(
                 *r,
-                2.0,
-                col,
-                Stroke::new(1.0, Color32::from_rgb(0xa0, 0x98, 0x80)),
+                3.0,
+                body,
+                Stroke::new(1.0, Color32::from_rgb(0x9a, 0x92, 0x7c)),
+            );
+            // Bottom shadow.
+            let shadow = Rect::from_min_max(pos2(r.left(), r.bottom() - 14.0), r.max);
+            vgrad(
+                &painter,
+                shadow,
+                Color32::from_rgba_unmultiplied(0, 0, 0, 0),
+                Color32::from_rgba_unmultiplied(0, 0, 0, if on { 30 } else { 55 }),
+            );
+            // Top highlight.
+            painter.line_segment(
+                [
+                    pos2(r.left() + 2.0, r.top() + 1.5),
+                    pos2(r.right() - 2.0, r.top() + 1.5),
+                ],
+                Stroke::new(1.0, Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, 90)),
             );
             let semi = (note.rem_euclid(12)) as usize;
-            if semi == 0 {
-                painter.text(
-                    pos2(r.center().x, r.bottom() - 10.0),
-                    Align2::CENTER_CENTER,
-                    format!("C{}", note / 12 - 1),
-                    FontId::proportional(8.0),
-                    CREAM_DIM,
-                );
+            let label = if semi == 0 {
+                format!("C{}", note / 12 - 1)
             } else {
-                painter.text(
-                    pos2(r.center().x, r.bottom() - 10.0),
-                    Align2::CENTER_CENTER,
-                    names[semi],
-                    FontId::proportional(8.0),
-                    CREAM_DIM,
-                );
-            }
+                names[semi].to_string()
+            };
+            painter.text(
+                pos2(r.center().x, r.bottom() - 10.0),
+                Align2::CENTER_CENTER,
+                label,
+                FontId::proportional(8.0),
+                CREAM_DIM,
+            );
         }
-        // Draw black keys on top
+        // Draw glossy black keys on top.
         for (r, note) in &black_notes {
             let on = self.active_notes.contains(note);
-            let col = if on { ACCENT_DIM } else { BLACK_KEY };
-            painter.rect(*r, 2.0, col, Stroke::new(1.0, Color32::BLACK));
+            let body = if on { ACCENT_DIM } else { BLACK_KEY };
+            painter.rect(*r, 2.0, body, Stroke::new(1.0, Color32::BLACK));
+            // Gloss highlight down the top of the key.
+            let gloss = Rect::from_min_max(
+                pos2(r.left() + 1.5, r.top() + 1.5),
+                pos2(r.right() - 1.5, r.top() + r.height() * 0.55),
+            );
+            vgrad(
+                &painter,
+                gloss,
+                Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, if on { 40 } else { 55 }),
+                Color32::from_rgba_unmultiplied(0xff, 0xff, 0xff, 0),
+            );
         }
 
         // Mouse interaction
@@ -926,19 +1492,46 @@ impl eframe::App for App {
         self.update_meters();
 
         egui::TopBottomPanel::top("header")
-            .frame(egui::Frame::none().fill(HEADER_BG).inner_margin(10.0))
+            .frame(egui::Frame::none().fill(PANEL_TOP).inner_margin(10.0))
             .show(ctx, |ui| self.header(ui));
 
         egui::TopBottomPanel::top("topbar")
-            .frame(egui::Frame::none().fill(BG).inner_margin(8.0))
+            .frame(
+                egui::Frame::none()
+                    .fill(Color32::from_rgb(0x1c, 0x1e, 0x1f))
+                    .inner_margin(8.0),
+            )
             .show(ctx, |ui| self.top_bar(ui));
 
         egui::TopBottomPanel::bottom("keyboard")
-            .frame(egui::Frame::none().fill(PANEL_BG).inner_margin(8.0))
+            .frame(
+                egui::Frame::none()
+                    .fill(Color32::from_rgb(0x0e, 0x0e, 0x0f))
+                    .inner_margin(10.0),
+            )
             .show(ctx, |ui| self.keyboard(ui));
 
+        // Oak wood side cheeks framing the metal panel (real photo texture).
+        let wood = self.wood_tex.clone();
+        egui::SidePanel::left("wood_left")
+            .exact_width(26.0)
+            .resizable(false)
+            .frame(egui::Frame::none())
+            .show(ctx, |ui| {
+                let r = ui.max_rect();
+                paint_wood(ui.painter(), r, wood.as_ref());
+            });
+        egui::SidePanel::right("wood_right")
+            .exact_width(26.0)
+            .resizable(false)
+            .frame(egui::Frame::none())
+            .show(ctx, |ui| {
+                let r = ui.max_rect();
+                paint_wood(ui.painter(), r, wood.as_ref());
+            });
+
         egui::CentralPanel::default()
-            .frame(egui::Frame::none().fill(BG).inner_margin(8.0))
+            .frame(egui::Frame::none().fill(PANEL_BOT).inner_margin(8.0))
             .show(ctx, |ui| self.body(ui));
 
         ctx.request_repaint();
