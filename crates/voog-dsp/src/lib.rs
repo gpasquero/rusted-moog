@@ -27,6 +27,7 @@ pub mod oscillator;
 // Engine layer (pure logic, no audio I/O — fully unit-testable).
 pub mod arpeggiator;
 pub mod channel;
+pub mod effects;
 pub mod event;
 pub mod patches;
 pub mod synth;
@@ -44,6 +45,7 @@ pub use params::*;
 
 pub use arpeggiator::{ArpMode, Arpeggiator};
 pub use channel::Channel;
+pub use effects::{Chorus, Delay};
 pub use event::{Event, ParamId};
 pub use synth::Synth;
 pub use voice::Voice;

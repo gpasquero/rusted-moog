@@ -105,6 +105,12 @@ pub enum Event {
         channel: u8,
         on: bool,
     },
+
+    // ── Master effects ──
+    SetChorusRate(f32),
+    SetChorusDepth(f32),
+    SetDelayTime(f32),
+    SetDelayFeedback(f32),
 }
 
 impl Patch {

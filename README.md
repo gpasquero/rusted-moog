@@ -41,6 +41,7 @@ Same synth architecture, deterministic real-time audio, and a GUI that actually 
 - 📈 **Dual ADSR envelopes** — independent amp & filter contours
 - 🌊 **LFO** — 4 waveforms, routable to filter / pitch / amp
 - 🎹 **Jupiter-8-style arpeggiator** — Up / Down / Up&Down / Random, 1–4 octaves, rate, gate and hold (latch)
+- 🌀 **Master effects** — modulated chorus (rate + depth) and feedback delay (time + feedback)
 - 🎹 **8-voice polyphony × 4 multitimbral channels** with oldest-note voice stealing
 - 🎛️ **Glide/portamento** (off / always / legato) + white & pink noise
 - 🎼 **37 factory presets** — from sub basses to screaming leads, many ported from classic Minimoog patch charts (Parliament, ELP, Wakeman, Taurus…)

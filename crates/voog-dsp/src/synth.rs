@@ -7,12 +7,15 @@
 
 use crate::channel::Channel;
 use crate::config::{BUFFER_SIZE, NUM_CHANNELS};
+use crate::effects::{Chorus, Delay};
 use crate::event::Event;
 
 pub struct Synth {
     pub channels: Vec<Channel>,
     master_volume: f32,
     peak_level: f32,
+    chorus: Chorus,
+    delay: Delay,
     mix_scratch: [f32; BUFFER_SIZE],
     ch_scratch: [f32; BUFFER_SIZE],
 }
@@ -29,6 +32,8 @@ impl Synth {
             channels: (0..NUM_CHANNELS).map(|_| Channel::new()).collect(),
             master_volume: 0.8,
             peak_level: 0.0,
+            chorus: Chorus::new(),
+            delay: Delay::new(),
             mix_scratch: [0.0; BUFFER_SIZE],
             ch_scratch: [0.0; BUFFER_SIZE],
         }
@@ -156,6 +161,10 @@ impl Synth {
                     c.set_arp_hold(on);
                 }
             }
+            Event::SetChorusRate(v) => self.chorus.rate = v,
+            Event::SetChorusDepth(v) => self.chorus.depth = v,
+            Event::SetDelayTime(v) => self.delay.time = v,
+            Event::SetDelayFeedback(v) => self.delay.feedback = v,
         }
     }
 
@@ -176,6 +185,9 @@ impl Synth {
             for ch in &mut self.channels {
                 ch.render_add(mix, &mut self.ch_scratch);
             }
+            // Master effects (transparent when depth / feedback are 0).
+            self.chorus.process(mix);
+            self.delay.process(mix);
             let mv = self.master_volume;
             for (o, &m) in chunk.iter_mut().zip(mix.iter()) {
                 let s = (m * mv).tanh(); // soft clip

@@ -735,6 +735,11 @@ pub struct App {
     arp_rate: f32,
     arp_gate: f32,
     arp_hold: bool,
+    // Master-effects mirror state (engine-owned; these track the last sent values).
+    chorus_rate: f32,
+    chorus_depth: f32,
+    delay_time: f32,
+    delay_feedback: f32,
     // virtual keyboard state
     kbd_octave: i32,
     active_notes: HashSet<i32>,
@@ -802,6 +807,10 @@ impl App {
             arp_rate: 8.0,
             arp_gate: 0.5,
             arp_hold: false,
+            chorus_rate: 1.5,
+            chorus_depth: 0.0,
+            delay_time: 0.3,
+            delay_feedback: 0.0,
             kbd_octave: 4,
             active_notes: HashSet::new(),
             pc_notes: HashMap::new(),
@@ -1129,11 +1138,12 @@ impl App {
             self.lfo_panel(&mut c[3]);
         });
         ui.add_space(6.0);
-        // Row 3: glide + arpeggiator + output/status.
-        ui.columns(3, |c| {
+        // Row 3: glide + arpeggiator + effects + output/status.
+        ui.columns(4, |c| {
             self.glide_panel(&mut c[0]);
             self.arp_panel(&mut c[1]);
-            self.status_panel(&mut c[2]);
+            self.fx_panel(&mut c[2]);
+            self.status_panel(&mut c[3]);
         });
     }
 
@@ -1417,6 +1427,45 @@ impl App {
                         on: hold,
                     });
                 }
+            });
+        });
+    }
+
+    fn fx_panel(&mut self, ui: &mut Ui) {
+        panel(ui, "EFFECTS", |ui| {
+            ui.horizontal(|ui| {
+                // CHORUS pair: rate + depth.
+                ui.vertical(|ui| {
+                    ui.label(RichText::new("CHORUS").color(CREAM_DIM).size(8.0));
+                    ui.horizontal(|ui| {
+                        let mut rate = self.chorus_rate;
+                        if knob(ui, "RATE", &mut rate, 0.1, 8.0, false, 1.5, KFmt::Rate) {
+                            self.chorus_rate = rate;
+                            self.send(Event::SetChorusRate(rate));
+                        }
+                        let mut depth = self.chorus_depth;
+                        if knob(ui, "DEPTH", &mut depth, 0.0, 1.0, false, 0.0, KFmt::Percent) {
+                            self.chorus_depth = depth;
+                            self.send(Event::SetChorusDepth(depth));
+                        }
+                    });
+                });
+                // DELAY pair: time + feedback.
+                ui.vertical(|ui| {
+                    ui.label(RichText::new("DELAY").color(CREAM_DIM).size(8.0));
+                    ui.horizontal(|ui| {
+                        let mut time = self.delay_time;
+                        if knob(ui, "TIME", &mut time, 0.02, 1.0, false, 0.3, KFmt::Time) {
+                            self.delay_time = time;
+                            self.send(Event::SetDelayTime(time));
+                        }
+                        let mut fbk = self.delay_feedback;
+                        if knob(ui, "FBK", &mut fbk, 0.0, 0.9, false, 0.0, KFmt::Percent) {
+                            self.delay_feedback = fbk;
+                            self.send(Event::SetDelayFeedback(fbk));
+                        }
+                    });
+                });
             });
         });
     }
