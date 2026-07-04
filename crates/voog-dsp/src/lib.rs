@@ -24,6 +24,14 @@ pub mod lfo;
 pub mod noise;
 pub mod oscillator;
 
+// Engine layer (pure logic, no audio I/O — fully unit-testable).
+pub mod channel;
+pub mod event;
+pub mod patches;
+pub mod synth;
+pub mod voice;
+pub mod voice_allocator;
+
 pub use config::{midi_to_freq, SAMPLE_RATE};
 pub use envelope::Adsr;
 pub use filter::MoogFilter;
@@ -32,3 +40,9 @@ pub use lfo::Lfo;
 pub use noise::NoiseGenerator;
 pub use oscillator::Oscillator;
 pub use params::*;
+
+pub use channel::Channel;
+pub use event::{Event, ParamId};
+pub use synth::Synth;
+pub use voice::Voice;
+pub use voice_allocator::VoiceAllocator;
